@@ -35,7 +35,8 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.tag }}
           make_latest: true
+          generate_release_notes: true
           body: |
-            masterへのpush(${{ github.sha }})から自動生成されたWindows用ビルド。
-            署名していないため、初回起動時にWindows Defender SmartScreenの警告が出る場合がある。
+            > [!WARNING]
+            > exe に関しては署名していないので初回起動時に Windows Defender SmartScreen の警告が出る場合があります
           files: dist/buds-watcher.exe
