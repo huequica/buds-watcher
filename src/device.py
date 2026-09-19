@@ -20,6 +20,15 @@ Windowsではコレクションごとに別々のHIDデバイスパスとして�
 (参考: Issue #1)。vid/pidだけでオープンすると先頭に列挙された無関係な
 コレクションを開いてしまい、目的のレポートが一切届かないことがあるため、
 列挙して見つかった全パスをそれぞれ監視する。
+
+HIDアクセスには `hidapi` パッケージ(importすると `hid` という名前で使う。
+`hid` パッケージとは別物)を使う。以前は ctypes 経由でシステムのhidapi共有
+ライブラリ/DLLを実行時に探して読み込む `hid` パッケージを使っていたが、
+PyInstaller onefileビルドではその探索が失敗し(実行時展開先のディレクトリが
+DLL検索パスに入らない)、Windows上でimport自体が失敗して検知が完全に
+無音で機能しなくなっていた(Issue #1)。`hidapi` パッケージはCython製で
+ネイティブライブラリを自身の共有ライブラリに静的にリンク/同梱しているため、
+この問題が起きない。
 """
 
 from __future__ import annotations
@@ -36,8 +45,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# `hid`はここでは遅延importする: モジュール読み込み直後にimportすると、
-# main.py の setup_logging() より前に実行されてしまい、一番知りたい
+# `hid`(hidapiパッケージ)はここでは遅延importする: モジュール読み込み直後に
+# importすると、main.py の setup_logging() より前に実行されてしまい、一番知りたい
 # 「importできたか」のログがロギング設定前に失われるため。
 hid = None  # type: ignore[assignment]
 _hid_import_attempted = False
@@ -54,7 +63,11 @@ def _ensure_hid_imported() -> None:
         logger.exception("failed to import `hid` module; device monitoring is disabled")
         return
     hid = _hid_module
-    logger.info("hidapi module loaded: %s", getattr(hid, "__file__", "?"))
+    logger.info(
+        "hidapi module loaded: %s (version %s)",
+        getattr(hid, "__file__", "?"),
+        hid.version_str(),
+    )
 
 
 SONY_VENDOR_ID = 0x054C
@@ -113,8 +126,9 @@ class _ReceiverReaderThread(QThread):
             return
 
         while not self._stop_requested:
+            device = hid.device()
             try:
-                device = hid.Device(path=self._path)
+                device.open_path(self._path)
             except Exception:
                 # レシーバーが抜かれた、権限不足など。少し待って再試行する。
                 logger.exception("failed to open HID path %r", self._path)
@@ -133,10 +147,10 @@ class _ReceiverReaderThread(QThread):
             if not self._stop_requested:
                 self.msleep(RECONNECT_DELAY_MS)
 
-    def _read_loop(self, device: "hid_types.Device") -> None:
+    def _read_loop(self, device: "hid_types.device") -> None:
         while not self._stop_requested:
             try:
-                data = device.read(64, timeout=READ_TIMEOUT_MS)
+                data = device.read(64, timeout_ms=READ_TIMEOUT_MS)
             except Exception:
                 # レシーバーが抜かれた等。外側のループで開き直しを試みる。
                 logger.exception("read() failed on HID path %r", self._path)

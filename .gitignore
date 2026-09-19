@@ -6,6 +6,7 @@ __pycache__/
 build/
 dist/
 *.spec
+buds-watcher.log
 
 # USBキャプチャ生成物(capture_inzone.sh の出力、解析用の一時データ)
 inzone_capture_*

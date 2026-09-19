@@ -14,7 +14,6 @@
       runtimeLibs = pkgs.lib.makeLibraryPath [
         pkgs.stdenv.cc.cc.lib
         pkgs.zlib
-        pkgs.hidapi # device.py が使う `hid` PyPIパッケージが動的にロードするCライブラリ
         pkgs.libGL
         pkgs.fontconfig
         pkgs.dbus
