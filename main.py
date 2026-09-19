@@ -41,6 +41,7 @@ def main() -> int:
     device.status_changed.connect(window.update_status)
 
     device.start()
+    app.aboutToQuit.connect(device.stop)
 
     return app.exec()
 
