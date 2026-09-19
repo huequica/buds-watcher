@@ -25,6 +25,9 @@ uv sync
 uv run python3 main.py
 ```
 
+[direnv](https://direnv.net/) を使っていれば `.envrc`(`use flake`)により
+ディレクトリに入るだけで自動的に devShell に入る。
+
 Nixを使わない場合は [uv](https://docs.astral.sh/uv/) を直接インストールして:
 
 ```bash
