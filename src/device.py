@@ -12,13 +12,21 @@ USBレシーバー(VID=0x054c, PID=0x0ec2)は標準のHIDインターフェー�
 
 このレポートは定期ポーリングでは来ないため(内部イベント駆動)、バックグラウンド
 スレッドで hidraw を blocking read し続け、レポートが来たらその都度状態を更新する。
+
+このUSBインターフェースはHIDレポートディスクリプタ上、複数のトップレベル
+コレクション(usage_page/usage)を持っている。Linuxではこれらが1つの
+hidrawノードに統合されて見えるため vid/pid 指定でオープンすれば十分だったが、
+Windowsではコレクションごとに別々のHIDデバイスパスとして列挙される
+(参考: Issue #1)。vid/pidだけでオープンすると先頭に列挙された無関係な
+コレクションを開いてしまい、目的のレポートが一切届かないことがあるため、
+列挙して見つかった全パスをそれぞれ監視する。
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, QThread, QTimer, Signal
 
 if TYPE_CHECKING:
     # `hid`はtry/except配下でNoneにフォールバックしうる変数のため、
@@ -42,15 +50,36 @@ MIN_STATUS_REPORT_LEN = 15
 
 READ_TIMEOUT_MS = 1000
 RECONNECT_DELAY_MS = 3000
+DISCOVERY_INTERVAL_MS = 3000
+
+
+def _enumerate_receiver_paths() -> list[bytes]:
+    """INZONE Budsレシーバーに属するHIDデバイスパスを重複無しで列挙する。"""
+    if hid is None:
+        return []
+    try:
+        entries = hid.enumerate(SONY_VENDOR_ID, INZONE_BUDS_PRODUCT_ID)
+    except Exception:
+        return []
+
+    seen: set[bytes] = set()
+    paths: list[bytes] = []
+    for entry in entries:
+        path = entry.get("path")
+        if path and path not in seen:
+            seen.add(path)
+            paths.append(path)
+    return paths
 
 
 class _ReceiverReaderThread(QThread):
-    """INZONE Budsレシーバーのhidrawを読み続け、状態レポートを検出したらemitするスレッド。"""
+    """HIDデバイスパスを1つ読み続け、状態レポートを検出したらemitするスレッド。"""
 
     status_report = Signal(bool, bool)  # (left_connected, right_connected)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, path: bytes, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._path = path
         self._stop_requested = False
 
     def request_stop(self) -> None:
@@ -62,9 +91,9 @@ class _ReceiverReaderThread(QThread):
 
         while not self._stop_requested:
             try:
-                device = hid.Device(vid=SONY_VENDOR_ID, pid=INZONE_BUDS_PRODUCT_ID)
+                device = hid.Device(path=self._path)
             except Exception:
-                # レシーバーが未接続、または権限不足など。少し待って再試行する。
+                # レシーバーが抜かれた、権限不足など。少し待って再試行する。
                 self.msleep(RECONNECT_DELAY_MS)
                 continue
 
@@ -112,16 +141,40 @@ class DeviceMonitor(QObject):
         self._left_connected = True
         self._right_connected = True
 
-        self._reader = _ReceiverReaderThread(self)
-        self._reader.status_report.connect(self._on_status_report)
+        self._readers: dict[bytes, _ReceiverReaderThread] = {}
+        self._discovery_timer = QTimer(self)
+        self._discovery_timer.timeout.connect(self._discover)
 
     def start(self) -> None:
-        if not self._reader.isRunning():
-            self._reader.start()
+        self._discover()
+        self._discovery_timer.start(DISCOVERY_INTERVAL_MS)
 
     def stop(self) -> None:
-        self._reader.request_stop()
-        self._reader.wait(READ_TIMEOUT_MS + 500)
+        self._discovery_timer.stop()
+        for reader in self._readers.values():
+            reader.request_stop()
+        for reader in self._readers.values():
+            reader.wait(READ_TIMEOUT_MS + 500)
+        self._readers.clear()
+
+    # ------------------------------------------------------------------
+    # レシーバーの抜き差しに追従して監視スレッドを増減させる
+    # ------------------------------------------------------------------
+    def _discover(self) -> None:
+        current_paths = set(_enumerate_receiver_paths())
+
+        for path in list(self._readers):
+            if path not in current_paths:
+                reader = self._readers.pop(path)
+                reader.request_stop()
+                reader.wait(READ_TIMEOUT_MS + 500)
+
+        for path in current_paths:
+            if path not in self._readers:
+                reader = _ReceiverReaderThread(path, self)
+                reader.status_report.connect(self._on_status_report)
+                reader.start()
+                self._readers[path] = reader
 
     # ------------------------------------------------------------------
     # バックグラウンドスレッドからのレポートを受けて状態を更新する

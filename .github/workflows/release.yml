@@ -13,6 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # タグ名はpyproject.tomlの [project] version をそのまま使う("v"を付与)。
+      # リリースするバージョンは、masterへのPRを作る際にpyproject.tomlで上げておくこと。
+      - name: Read version from pyproject.toml
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
@@ -23,8 +32,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v3.0.3
         with:
-          tag_name: latest
-          name: Latest build
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
           make_latest: true
           body: |
             masterへのpush(${{ github.sha }})から自動生成されたWindows用ビルド。
