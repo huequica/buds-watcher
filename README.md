@@ -49,14 +49,16 @@ uv自体にはnpmの`package.json`の`scripts`に相当する機能は無いた�
 | `format-check` | `ruff format --check .`(CIと同じ) |
 | `check` | `lint` + `format-check` |
 
-### Linuxでの追加設定(hidrawへのアクセス権限)
+### Linuxでの追加設定(USBデバイスへのアクセス権限)
 
-`src/device.py` は `/dev/hidraw*` を直接読むため、root以外のユーザーでもレシーバーの
-HIDデバイスに読み取りアクセスできるよう udev ルールが必要。例:
+`src/device.py` は `hidapi` パッケージ経由でレシーバーにアクセスする。Linux上の
+`hidapi` はhidraw経由ではなく **libusb** 経由でアクセスするため、`/dev/hidraw*`
+ではなく `/dev/bus/usb/*/*` への読み書き権限が必要。root以外のユーザーでも
+アクセスできるよう udev ルールが必要。例:
 
 ```
 # /etc/udev/rules.d/99-inzone-buds.rules
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660", GROUP="input"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660", GROUP="input"
 ```
 
 ユーザーを `input` グループに追加し、ルールを反映(`udevadm control --reload-rules && udevadm trigger`、
