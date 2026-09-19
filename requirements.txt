@@ -1,0 +1,5 @@
+# UI / トレイ / オーバーレイ通知
+PySide6>=6.6
+
+# INZONE Budsレシーバーの生HIDレポートを読むため(device.py)
+hid>=1.0

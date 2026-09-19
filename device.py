@@ -1,0 +1,162 @@
+"""
+INZONE Buds の左右接続状態を監視するモジュール。
+
+USBレシーバー(VID=0x054c, PID=0x0ec2)は標準のHIDインターフェースを持ち、
+状態変化(切断/再接続)のたびに64バイトのHIDレポートをイベント駆動で送ってくる。
+実機USBキャプチャ(capture_inzone.sh で取得、usbmon + tshark)を解析した結果、
+以下のことが判明している:
+
+- byte[8] == 0x12 かつ byte[9] == 0x01 のレポートが「左右接続状態」を示す
+- byte[13] が左の接続状態(1=接続, 0=切断)
+- byte[14] が右の接続状態(1=接続, 0=切断)
+
+このレポートは定期ポーリングでは来ないため(内部イベント駆動)、バックグラウンド
+スレッドで hidraw を blocking read し続け、レポートが来たらその都度状態を更新する。
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import QObject, QThread, Signal
+
+try:
+    import hid
+except ImportError:  # hidapiがインストールされていない環境向けフォールバック
+    hid = None  # type: ignore[assignment]
+
+SONY_VENDOR_ID = 0x054C
+INZONE_BUDS_PRODUCT_ID = 0x0EC2
+
+# 実機キャプチャ解析で判明したステータスレポートのフォーマット
+STATUS_REPORT_CLASS = 0x12
+STATUS_REPORT_TYPE = 0x01
+LEFT_STATUS_OFFSET = 13
+RIGHT_STATUS_OFFSET = 14
+MIN_STATUS_REPORT_LEN = 15
+
+READ_TIMEOUT_MS = 1000
+RECONNECT_DELAY_MS = 3000
+
+
+class _ReceiverReaderThread(QThread):
+    """INZONE Budsレシーバーのhidrawを読み続け、状態レポートを検出したらemitするスレッド。"""
+
+    status_report = Signal(bool, bool)  # (left_connected, right_connected)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._stop_requested = False
+
+    def request_stop(self) -> None:
+        self._stop_requested = True
+
+    def run(self) -> None:
+        if hid is None:
+            return
+
+        while not self._stop_requested:
+            try:
+                device = hid.Device(vid=SONY_VENDOR_ID, pid=INZONE_BUDS_PRODUCT_ID)
+            except Exception:
+                # レシーバーが未接続、または権限不足など。少し待って再試行する。
+                self.msleep(RECONNECT_DELAY_MS)
+                continue
+
+            try:
+                self._read_loop(device)
+            finally:
+                try:
+                    device.close()
+                except Exception:
+                    pass
+
+            if not self._stop_requested:
+                self.msleep(RECONNECT_DELAY_MS)
+
+    def _read_loop(self, device: "hid.Device") -> None:
+        while not self._stop_requested:
+            try:
+                data = device.read(64, timeout=READ_TIMEOUT_MS)
+            except Exception:
+                # レシーバーが抜かれた等。外側のループで開き直しを試みる。
+                return
+
+            if not data or len(data) < MIN_STATUS_REPORT_LEN:
+                continue
+            if data[8] != STATUS_REPORT_CLASS or data[9] != STATUS_REPORT_TYPE:
+                continue
+
+            left_connected = bool(data[LEFT_STATUS_OFFSET])
+            right_connected = bool(data[RIGHT_STATUS_OFFSET])
+            self.status_report.emit(left_connected, right_connected)
+
+
+class DeviceMonitor(QObject):
+    # 実際に接続状態が変化したときに発火するシグナル
+    left_connected = Signal()
+    left_disconnected = Signal()
+    right_connected = Signal()
+    right_disconnected = Signal()
+
+    # 現在の状態をまとめて通知するシグナル(ステータスウィンドウ表示用)
+    status_changed = Signal(bool, bool)  # (left_is_connected, right_is_connected)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._left_connected = True
+        self._right_connected = True
+
+        self._reader = _ReceiverReaderThread(self)
+        self._reader.status_report.connect(self._on_status_report)
+
+    def start(self) -> None:
+        if not self._reader.isRunning():
+            self._reader.start()
+
+    def stop(self) -> None:
+        self._reader.request_stop()
+        self._reader.wait(READ_TIMEOUT_MS + 500)
+
+    # ------------------------------------------------------------------
+    # バックグラウンドスレッドからのレポートを受けて状態を更新する
+    # ------------------------------------------------------------------
+    def _on_status_report(self, left_connected: bool, right_connected: bool) -> None:
+        self._set_left(left_connected)
+        self._set_right(right_connected)
+
+    # ------------------------------------------------------------------
+    # 内部ヘルパー
+    # ------------------------------------------------------------------
+    def _set_left(self, connected: bool) -> None:
+        if connected == self._left_connected:
+            return
+        self._left_connected = connected
+        if connected:
+            self.left_connected.emit()
+        else:
+            self.left_disconnected.emit()
+        self.status_changed.emit(self._left_connected, self._right_connected)
+
+    def _set_right(self, connected: bool) -> None:
+        if connected == self._right_connected:
+            return
+        self._right_connected = connected
+        if connected:
+            self.right_connected.emit()
+        else:
+            self.right_disconnected.emit()
+        self.status_changed.emit(self._left_connected, self._right_connected)
+
+    # ------------------------------------------------------------------
+    # テスト用: トレイメニューの「テスト通知」から呼ばれる
+    # ------------------------------------------------------------------
+    def simulate_disconnect(self, side: str) -> None:
+        if side == "left":
+            self._set_left(False)
+        elif side == "right":
+            self._set_right(False)
+
+    def simulate_connect(self, side: str) -> None:
+        if side == "left":
+            self._set_left(True)
+        elif side == "right":
+            self._set_right(True)
