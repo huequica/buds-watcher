@@ -4,6 +4,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 
+from applog import setup_logging
 from device import DeviceMonitor
 from mainwindow import MainWindow
 from notify import OverlayNotification
@@ -11,6 +12,7 @@ from tray import TrayIcon
 
 
 def main() -> int:
+    setup_logging()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)  # ウィンドウを閉じても常駐を続ける
 
