@@ -9,6 +9,10 @@ USBレシーバー(VID=0x054c, PID=0x0ec2)は標準のHIDインターフェー�
 - byte[8] == 0x12 かつ byte[9] == 0x01 のレポートが「左右接続状態」を示す
 - byte[13] が左の接続状態(1=接続, 0=切断)
 - byte[14] が右の接続状態(1=接続, 0=切断)
+- byte[8] == 0x14 かつ byte[9] == 0x04 のレポートが「左右バッテリー残量」を示す
+  (INZONE Hubアプリの表示値と実機で一致確認済み)
+- byte[14] が左のバッテリー残量(%, 0-100)
+- byte[16] が右のバッテリー残量(%, 0-100)
 
 このレポートは定期ポーリングでは来ないため(内部イベント駆動)、バックグラウンド
 スレッドで hidraw を blocking read し続け、レポートが来たらその都度状態を更新する。
@@ -80,6 +84,21 @@ LEFT_STATUS_OFFSET = 13
 RIGHT_STATUS_OFFSET = 14
 MIN_STATUS_REPORT_LEN = 15
 
+BATTERY_REPORT_CLASS = 0x14
+BATTERY_REPORT_TYPE = 0x04
+LEFT_BATTERY_OFFSET = 14
+RIGHT_BATTERY_OFFSET = 16
+MIN_BATTERY_REPORT_LEN = 17
+# 0xff(255)はバッテリー残量が「まだ不明」であることを示すセンチネル値
+# (再接続直後などに見られる)。battery_report シグナルではこれを -1 として
+# 伝える(不明なままそのサイドの値だけ無視し、既知の値を保持し続ける)。
+BATTERY_UNKNOWN = -1
+
+
+def _normalize_battery_percent(raw: int) -> int:
+    return raw if 0 <= raw <= 100 else BATTERY_UNKNOWN
+
+
 READ_TIMEOUT_MS = 1000
 RECONNECT_DELAY_MS = 3000
 DISCOVERY_INTERVAL_MS = 3000
@@ -119,6 +138,7 @@ class _ReceiverReaderThread(QThread):
     """HIDデバイスパスを1つ読み続け、状態レポートを検出したらemitするスレッド。"""
 
     status_report = Signal(bool, bool)  # (left_connected, right_connected)
+    battery_report = Signal(int, int)  # (left_battery_percent, right_battery_percent)
     gave_up = Signal(bytes)  # 一度もデータを得られないまま失敗し続け、諦めたパス
 
     def __init__(self, path: bytes, parent: QObject | None = None) -> None:
@@ -185,21 +205,42 @@ class _ReceiverReaderThread(QThread):
             if not data:
                 continue
             got_data = True
-            if len(data) < MIN_STATUS_REPORT_LEN:
+            if len(data) < 10:
                 continue
-            if data[8] != STATUS_REPORT_CLASS or data[9] != STATUS_REPORT_TYPE:
-                logger.debug("unrelated report on %r: %r", self._path, data)
-                continue
+            report_class, report_type = data[8], data[9]
 
-            left_connected = bool(data[LEFT_STATUS_OFFSET])
-            right_connected = bool(data[RIGHT_STATUS_OFFSET])
-            logger.info(
-                "status report on %r: left=%s right=%s",
-                self._path,
-                left_connected,
-                right_connected,
-            )
-            self.status_report.emit(left_connected, right_connected)
+            if (
+                report_class == STATUS_REPORT_CLASS
+                and report_type == STATUS_REPORT_TYPE
+                and len(data) >= MIN_STATUS_REPORT_LEN
+            ):
+                left_connected = bool(data[LEFT_STATUS_OFFSET])
+                right_connected = bool(data[RIGHT_STATUS_OFFSET])
+                logger.info(
+                    "status report on %r: left=%s right=%s",
+                    self._path,
+                    left_connected,
+                    right_connected,
+                )
+                self.status_report.emit(left_connected, right_connected)
+            elif (
+                report_class == BATTERY_REPORT_CLASS
+                and report_type == BATTERY_REPORT_TYPE
+                and len(data) >= MIN_BATTERY_REPORT_LEN
+            ):
+                left_battery = _normalize_battery_percent(data[LEFT_BATTERY_OFFSET])
+                right_battery = _normalize_battery_percent(data[RIGHT_BATTERY_OFFSET])
+                logger.info(
+                    "battery report on %r: left=%d right=%d (raw left=%d right=%d)",
+                    self._path,
+                    left_battery,
+                    right_battery,
+                    data[LEFT_BATTERY_OFFSET],
+                    data[RIGHT_BATTERY_OFFSET],
+                )
+                self.battery_report.emit(left_battery, right_battery)
+            else:
+                logger.debug("unrelated report on %r: %r", self._path, data)
         return got_data
 
 
@@ -213,10 +254,15 @@ class DeviceMonitor(QObject):
     # 現在の状態をまとめて通知するシグナル(ステータスウィンドウ表示用)
     status_changed = Signal(bool, bool)  # (left_is_connected, right_is_connected)
 
+    # バッテリー残量レポートを受信するたびに発火するシグナル
+    battery_changed = Signal(int, int)  # (left_battery_percent, right_battery_percent)
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._left_connected = True
         self._right_connected = True
+        self.left_battery: int | None = None
+        self.right_battery: int | None = None
 
         self._readers: dict[bytes, _ReceiverReaderThread] = {}
         self._given_up_paths: set[bytes] = set()
@@ -258,6 +304,7 @@ class DeviceMonitor(QObject):
                 logger.info("receiver path found, starting reader: %r", path)
                 reader = _ReceiverReaderThread(path, self)
                 reader.status_report.connect(self._on_status_report)
+                reader.battery_report.connect(self._on_battery_report)
                 reader.gave_up.connect(self._on_reader_gave_up)
                 reader.start()
                 self._readers[path] = reader
@@ -275,6 +322,17 @@ class DeviceMonitor(QObject):
     def _on_status_report(self, left_connected: bool, right_connected: bool) -> None:
         self._set_left(left_connected)
         self._set_right(right_connected)
+
+    def _on_battery_report(self, left_battery: int, right_battery: int) -> None:
+        # -1(BATTERY_UNKNOWN)はまだ不明という意味なので、既知の値を保持する。
+        if left_battery != BATTERY_UNKNOWN:
+            self.left_battery = left_battery
+        if right_battery != BATTERY_UNKNOWN:
+            self.right_battery = right_battery
+        self.battery_changed.emit(
+            self.left_battery if self.left_battery is not None else BATTERY_UNKNOWN,
+            self.right_battery if self.right_battery is not None else BATTERY_UNKNOWN,
+        )
 
     # ------------------------------------------------------------------
     # 内部ヘルパー

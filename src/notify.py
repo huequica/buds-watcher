@@ -132,4 +132,6 @@ class OverlayNotification(QWidget):
         msg_font.setPointSize(9)
         painter.setFont(msg_font)
         painter.setPen(QColor(210, 210, 210, round(255 * alpha)))
-        painter.drawText(24, 56, self._message)
+        line_height = 18
+        for i, line in enumerate(self._message.split("\n")):
+            painter.drawText(24, 56 + i * line_height, line)

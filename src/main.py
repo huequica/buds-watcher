@@ -39,14 +39,16 @@ def main() -> int:
         notification.show_message("INZONE Buds", "右のイヤホンが切断されました")
 
     def on_left_connected() -> None:
-        notification.show_message(
-            "INZONE Buds", "左のイヤホンが接続されました", OverlayNotification.ACCENT_CONNECTED
-        )
+        message = "左のイヤホンが接続されました"
+        if device.left_battery is not None:
+            message += f"\nバッテリー {device.left_battery}%"
+        notification.show_message("INZONE Buds", message, OverlayNotification.ACCENT_CONNECTED)
 
     def on_right_connected() -> None:
-        notification.show_message(
-            "INZONE Buds", "右のイヤホンが接続されました", OverlayNotification.ACCENT_CONNECTED
-        )
+        message = "右のイヤホンが接続されました"
+        if device.right_battery is not None:
+            message += f"\nバッテリー {device.right_battery}%"
+        notification.show_message("INZONE Buds", message, OverlayNotification.ACCENT_CONNECTED)
 
     device.left_disconnected.connect(on_left_disconnected)
     device.right_disconnected.connect(on_right_disconnected)
