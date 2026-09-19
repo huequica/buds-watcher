@@ -28,6 +28,9 @@ class OverlayNotification(QWidget):
     HEIGHT = 84
     MARGIN = 24
 
+    ACCENT_DISCONNECTED = QColor(220, 60, 60)
+    ACCENT_CONNECTED = QColor(70, 190, 120)
+
     def __init__(self) -> None:
         super().__init__(
             None,
@@ -41,6 +44,7 @@ class OverlayNotification(QWidget):
 
         self._title = ""
         self._message = ""
+        self._accent = self.ACCENT_DISCONNECTED
         # Waylandではウィンドウ単位のopacity(setWindowOpacity)がQtのプラットフォーム
         # プラグインでサポートされていないため、フェードはウィンドウ透明度ではなく
         # 描画内容のアルファ値で自前で行う。
@@ -61,9 +65,10 @@ class OverlayNotification(QWidget):
 
     contentOpacity = Property(float, _get_content_opacity, _set_content_opacity)
 
-    def show_message(self, title: str, message: str) -> None:
+    def show_message(self, title: str, message: str, accent: QColor | None = None) -> None:
         self._title = title
         self._message = message
+        self._accent = accent if accent is not None else self.ACCENT_DISCONNECTED
         self._move_to_corner()
         self.contentOpacity = 0.0
         self.show()
@@ -111,7 +116,8 @@ class OverlayNotification(QWidget):
         painter.setBrush(bg)
         painter.drawRoundedRect(self.rect(), 14, 14)
 
-        accent = QColor(220, 60, 60, round(255 * alpha))
+        accent = QColor(self._accent)
+        accent.setAlpha(round(255 * alpha))
         painter.setBrush(accent)
         painter.drawRoundedRect(0, 0, 6, self.height(), 3, 3)
 
@@ -126,4 +132,6 @@ class OverlayNotification(QWidget):
         msg_font.setPointSize(9)
         painter.setFont(msg_font)
         painter.setPen(QColor(210, 210, 210, round(255 * alpha)))
-        painter.drawText(24, 56, self._message)
+        line_height = 18
+        for i, line in enumerate(self._message.split("\n")):
+            painter.drawText(24, 56 + i * line_height, line)
