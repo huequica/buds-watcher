@@ -1,0 +1,32 @@
+name: Build Windows exe and release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      - run: uv sync --no-default-groups --group build
+
+      - run: uv run poe build
+
+      - uses: softprops/action-gh-release@v3.0.3
+        with:
+          tag_name: latest
+          name: Latest build
+          make_latest: true
+          body: |
+            masterへのpush(${{ github.sha }})から自動生成されたWindows用ビルド。
+            署名していないため、初回起動時にWindows Defender SmartScreenの警告が出る場合がある。
+          files: dist/buds-watcher.exe

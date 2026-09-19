@@ -81,3 +81,23 @@ KDE Plasma はこの対応が標準で入っているので追加設定は不要
   `wlr-layer-shell` プロトコル(KDEなら `layer-shell-qt`)への対応が必要だが、
   PySide6用の公式バインディングが無いため未対応。**X11セッションでは正しく
   右上に固定表示される**ため、位置を重視する場合はX11セッションの使用を推奨する。
+
+## Windows用実行ファイル
+
+Python環境を用意せずに使いたい場合向けに、[PyInstaller](https://pyinstaller.org/)で
+単一exeにまとめられる。`master`にpushすると GitHub Actions
+(`.github/workflows/release.yml`)がWindows上で自動ビルドし、[Releases](../../releases)の
+`latest`タグに`buds-watcher.exe`をアップロードする(既存のリリースは上書きされる)。
+
+手元でビルドする場合(Windows上で):
+
+```bash
+uv sync --group build
+uv run poe build
+```
+
+`dist/buds-watcher.exe` が生成される。署名していないため、初回起動時にWindows Defender
+SmartScreenの警告が出る場合がある。
+
+Windows実機での動作確認はまだ行っていない(hidrawの代わりにhidapiのWindowsバックエンドを
+使う想定だが、権限やドライバの問題が出る可能性がある)。

@@ -12,6 +12,9 @@ dependencies = [
 package = false
 
 [dependency-groups]
+build = [
+    "pyinstaller>=6.22.3",
+]
 dev = [
     "poethepoet>=0.48.0",
     "ruff>=0.16.8",
@@ -30,3 +33,4 @@ lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
 check = ["lint", "format-check"]
+build = "pyinstaller --onefile --windowed --name buds-watcher --collect-all hid --exclude-module PySide6.QtNetwork src/main.py"
