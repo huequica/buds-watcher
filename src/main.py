@@ -38,8 +38,20 @@ def main() -> int:
     def on_right_disconnected() -> None:
         notification.show_message("INZONE Buds", "右のイヤホンが切断されました")
 
+    def on_left_connected() -> None:
+        notification.show_message(
+            "INZONE Buds", "左のイヤホンが接続されました", OverlayNotification.ACCENT_CONNECTED
+        )
+
+    def on_right_connected() -> None:
+        notification.show_message(
+            "INZONE Buds", "右のイヤホンが接続されました", OverlayNotification.ACCENT_CONNECTED
+        )
+
     device.left_disconnected.connect(on_left_disconnected)
     device.right_disconnected.connect(on_right_disconnected)
+    device.left_connected.connect(on_left_connected)
+    device.right_connected.connect(on_right_connected)
     device.status_changed.connect(window.update_status)
 
     device.start()
