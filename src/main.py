@@ -55,6 +55,7 @@ def main() -> int:
     device.left_connected.connect(on_left_connected)
     device.right_connected.connect(on_right_connected)
     device.status_changed.connect(window.update_status)
+    device.battery_changed.connect(window.update_battery)
 
     device.start()
     app.aboutToQuit.connect(device.stop)
