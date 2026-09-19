@@ -356,18 +356,3 @@ class DeviceMonitor(QObject):
         else:
             self.right_disconnected.emit()
         self.status_changed.emit(self._left_connected, self._right_connected)
-
-    # ------------------------------------------------------------------
-    # テスト用: トレイメニューの「テスト通知」から呼ばれる
-    # ------------------------------------------------------------------
-    def simulate_disconnect(self, side: str) -> None:
-        if side == "left":
-            self._set_left(False)
-        elif side == "right":
-            self._set_right(False)
-
-    def simulate_connect(self, side: str) -> None:
-        if side == "left":
-            self._set_left(True)
-        elif side == "right":
-            self._set_right(True)

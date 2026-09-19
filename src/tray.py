@@ -56,24 +56,6 @@ class TrayIcon(QSystemTrayIcon):
 
         menu.addSeparator()
 
-        test_left_action = QAction("テスト通知: 左を切断", menu)
-        test_left_action.triggered.connect(lambda: self._device.simulate_disconnect("left"))
-        menu.addAction(test_left_action)
-
-        test_left_reconnect = QAction("テスト通知: 左を再接続", menu)
-        test_left_reconnect.triggered.connect(lambda: self._device.simulate_connect("left"))
-        menu.addAction(test_left_reconnect)
-
-        test_right_action = QAction("テスト通知: 右を切断", menu)
-        test_right_action.triggered.connect(lambda: self._device.simulate_disconnect("right"))
-        menu.addAction(test_right_action)
-
-        test_right_reconnect = QAction("テスト通知: 右を再接続", menu)
-        test_right_reconnect.triggered.connect(lambda: self._device.simulate_connect("right"))
-        menu.addAction(test_right_reconnect)
-
-        menu.addSeparator()
-
         quit_action = QAction("アプリを終了する", menu)
         quit_action.triggered.connect(QApplication.quit)
         menu.addAction(quit_action)
