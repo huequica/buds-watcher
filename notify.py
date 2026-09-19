@@ -16,7 +16,7 @@ OS標準の通知センターを使わない、独自の常時最前面オーバ
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QPoint, QEasingCurve
+from PySide6.QtCore import Property, Qt, QTimer, QPropertyAnimation, QPoint, QEasingCurve
 from PySide6.QtGui import QColor, QPainter, QFont
 from PySide6.QtWidgets import QWidget, QApplication
 
@@ -33,8 +33,7 @@ class OverlayNotification(QWidget):
             None,
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
-            | Qt.WindowType.X11BypassWindowManagerHint,
+            | Qt.WindowType.Tool,
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -42,17 +41,31 @@ class OverlayNotification(QWidget):
 
         self._title = ""
         self._message = ""
+        # Waylandではウィンドウ単位のopacity(setWindowOpacity)がQtのプラットフォーム
+        # プラグインでサポートされていないため、フェードはウィンドウ透明度ではなく
+        # 描画内容のアルファ値で自前で行う。
+        self._content_opacity = 0.0
 
-        self._fade_anim = QPropertyAnimation(self, b"windowOpacity")
+        self._fade_anim = QPropertyAnimation(self, b"contentOpacity")
+        self._fade_anim.finished.connect(self._on_fade_finished)
         self._hide_timer = QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self._fade_out)
+
+    def _get_content_opacity(self) -> float:
+        return self._content_opacity
+
+    def _set_content_opacity(self, value: float) -> None:
+        self._content_opacity = value
+        self.update()
+
+    contentOpacity = Property(float, _get_content_opacity, _set_content_opacity)
 
     def show_message(self, title: str, message: str) -> None:
         self._title = title
         self._message = message
         self._move_to_corner()
-        self.setWindowOpacity(0.0)
+        self.contentOpacity = 0.0
         self.show()
         self.raise_()
 
@@ -64,16 +77,18 @@ class OverlayNotification(QWidget):
         self._fade_anim.start()
 
         self._hide_timer.start(self.DISPLAY_MS)
-        self.update()
 
     def _fade_out(self) -> None:
         self._fade_anim.stop()
         self._fade_anim.setDuration(self.FADE_MS)
-        self._fade_anim.setStartValue(self.windowOpacity())
+        self._fade_anim.setStartValue(self._content_opacity)
         self._fade_anim.setEndValue(0.0)
         self._fade_anim.setEasingCurve(QEasingCurve.Type.InCubic)
-        self._fade_anim.finished.connect(self.hide)
         self._fade_anim.start()
+
+    def _on_fade_finished(self) -> None:
+        if self._content_opacity <= 0.0:
+            self.hide()
 
     def _move_to_corner(self) -> None:
         screen = QApplication.primaryScreen()
@@ -89,16 +104,18 @@ class OverlayNotification(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        bg = QColor(24, 24, 28, 235)
+        alpha = self._content_opacity
+
+        bg = QColor(24, 24, 28, round(235 * alpha))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(bg)
         painter.drawRoundedRect(self.rect(), 14, 14)
 
-        accent = QColor(220, 60, 60)
+        accent = QColor(220, 60, 60, round(255 * alpha))
         painter.setBrush(accent)
         painter.drawRoundedRect(0, 0, 6, self.height(), 3, 3)
 
-        painter.setPen(QColor(255, 255, 255))
+        painter.setPen(QColor(255, 255, 255, round(255 * alpha)))
         title_font = QFont()
         title_font.setPointSize(11)
         title_font.setBold(True)
@@ -108,5 +125,5 @@ class OverlayNotification(QWidget):
         msg_font = QFont()
         msg_font.setPointSize(9)
         painter.setFont(msg_font)
-        painter.setPen(QColor(210, 210, 210))
+        painter.setPen(QColor(210, 210, 210, round(255 * alpha)))
         painter.drawText(24, 56, self._message)
