@@ -16,9 +16,9 @@ OS標準の通知センターを使わない、独自の常時最前面オーバ
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, Qt, QTimer, QPropertyAnimation, QPoint, QEasingCurve
-from PySide6.QtGui import QColor, QPainter, QFont
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtCore import Property, QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
+from PySide6.QtGui import QColor, QFont, QPainter
+from PySide6.QtWidgets import QApplication, QWidget
 
 
 class OverlayNotification(QWidget):
