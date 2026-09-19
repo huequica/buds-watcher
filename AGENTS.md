@@ -7,7 +7,7 @@ Issue の解決、細かいリファクタなどリリース時以外で既存�
 
 `!build` と PR に対してコメントを行うことでその PR の段階でのコードの状態でビルドを行い、 artifact 経由でダウンロードできるようにしてあります。  
 Windows 内部に python の実行環境がない人でも動作を確かめることができるので、必要に応じて提案、使用してください。  
-詳細は　`.github/workflows/pr-build.yml` を確認してください。
+詳細は `.github/workflows/pr-build.yml` を確認してください。
 
 # リリース
 
@@ -18,12 +18,12 @@ Windows 内部に python の実行環境がない人でも動作を確かめる�
 リリースの際は事前に `pyproject.toml` の version を更新するPRを作成してください。  
 バージョニングは Semantic Versioning に準拠します。  
 このバージョンが Release の tag に使われるため変更を忘れると競合が発生して正しく Release が作成されなかったりします。  
-また指示者からどこのバージョンを上げるのか(　Minorなのか、 Patch なのかなど )の指示がなかった場合は必ず確認を取ってから更新してください。  
+また指示者からどこのバージョンを上げるのか( Minorなのか、 Patch なのかなど )の指示がなかった場合は必ず確認を取ってから更新してください。  
 PRの向き先は `develop` でOKです。
 
 ## 2. master に向けて PR を発行
 
 `master` ブランチに向けて PR を発行してください。  
-この際タイトルは原則として　`RELEASE v0.0.3` のようなタイトルで発行してください。  
+この際タイトルは原則として `RELEASE v0.0.3` のようなタイトルで発行してください。  
 その後 PR が merge されれば自動的に GitHub Actions がリリースを発行します。  
 詳細は `.github/workflows/release.yml` を確認してください。
