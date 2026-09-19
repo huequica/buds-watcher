@@ -21,6 +21,18 @@ jobs:
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: windows-latest
     steps:
+      - name: Comment build started
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `ビルド開始しました: ${runUrl}`,
+            });
+
       - name: Resolve PR head commit
         id: pr
         uses: actions/github-script@v9.0.0
