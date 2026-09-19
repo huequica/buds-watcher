@@ -84,6 +84,13 @@ READ_TIMEOUT_MS = 1000
 RECONNECT_DELAY_MS = 3000
 DISCOVERY_INTERVAL_MS = 3000
 
+# openには成功するがreadが一度もデータを返さずに毎回即時失敗するパスは、
+# OS予約のHIDコレクション(Windowsのコンシューマーコントロール等)など、
+# そもそも読めない対象である可能性が高い。この回数連続で「一度も成功データ
+# を得られないまま失敗」した場合はそのパスを諦める(ログ肥大化・無駄な
+# リトライを防ぐため)。デバイスの抜き差しで状態はリセットされる。
+MAX_CONSECUTIVE_EMPTY_FAILURES = 3
+
 
 def _enumerate_receiver_paths() -> list[bytes]:
     """INZONE Budsレシーバーに属するHIDデバイスパスを重複無しで列挙する。"""
@@ -112,11 +119,13 @@ class _ReceiverReaderThread(QThread):
     """HIDデバイスパスを1つ読み続け、状態レポートを検出したらemitするスレッド。"""
 
     status_report = Signal(bool, bool)  # (left_connected, right_connected)
+    gave_up = Signal(bytes)  # 一度もデータを得られないまま失敗し続け、諦めたパス
 
     def __init__(self, path: bytes, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._path = path
         self._stop_requested = False
+        self._consecutive_empty_failures = 0
 
     def request_stop(self) -> None:
         self._stop_requested = True
@@ -137,26 +146,46 @@ class _ReceiverReaderThread(QThread):
 
             logger.info("opened HID path %r", self._path)
             try:
-                self._read_loop(device)
+                got_data = self._read_loop(device)
             finally:
                 try:
                     device.close()
                 except Exception:
                     pass
 
+            if got_data:
+                self._consecutive_empty_failures = 0
+            else:
+                self._consecutive_empty_failures += 1
+                if self._consecutive_empty_failures >= MAX_CONSECUTIVE_EMPTY_FAILURES:
+                    logger.warning(
+                        "giving up on HID path %r after %d consecutive failures "
+                        "without ever reading data (likely an unreadable OS-reserved "
+                        "collection)",
+                        self._path,
+                        self._consecutive_empty_failures,
+                    )
+                    self.gave_up.emit(self._path)
+                    return
+
             if not self._stop_requested:
                 self.msleep(RECONNECT_DELAY_MS)
 
-    def _read_loop(self, device: "hid_types.device") -> None:
+    def _read_loop(self, device: "hid_types.device") -> bool:
+        """状態レポート(不一致含む)を一度でも読めたら True を返す。"""
+        got_data = False
         while not self._stop_requested:
             try:
                 data = device.read(64, timeout_ms=READ_TIMEOUT_MS)
             except Exception:
                 # レシーバーが抜かれた等。外側のループで開き直しを試みる。
                 logger.exception("read() failed on HID path %r", self._path)
-                return
+                return got_data
 
-            if not data or len(data) < MIN_STATUS_REPORT_LEN:
+            if not data:
+                continue
+            got_data = True
+            if len(data) < MIN_STATUS_REPORT_LEN:
                 continue
             if data[8] != STATUS_REPORT_CLASS or data[9] != STATUS_REPORT_TYPE:
                 logger.debug("unrelated report on %r: %r", self._path, data)
@@ -171,6 +200,7 @@ class _ReceiverReaderThread(QThread):
                 right_connected,
             )
             self.status_report.emit(left_connected, right_connected)
+        return got_data
 
 
 class DeviceMonitor(QObject):
@@ -189,6 +219,7 @@ class DeviceMonitor(QObject):
         self._right_connected = True
 
         self._readers: dict[bytes, _ReceiverReaderThread] = {}
+        self._given_up_paths: set[bytes] = set()
         self._discovery_timer = QTimer(self)
         self._discovery_timer.timeout.connect(self._discover)
 
@@ -219,16 +250,24 @@ class DeviceMonitor(QObject):
                 reader.request_stop()
                 reader.wait(READ_TIMEOUT_MS + 500)
 
+        # 抜き差しされたパスは条件が変わりうるので、諦めていたことを忘れて良い。
+        self._given_up_paths &= current_paths
+
         for path in current_paths:
-            if path not in self._readers:
+            if path not in self._readers and path not in self._given_up_paths:
                 logger.info("receiver path found, starting reader: %r", path)
                 reader = _ReceiverReaderThread(path, self)
                 reader.status_report.connect(self._on_status_report)
+                reader.gave_up.connect(self._on_reader_gave_up)
                 reader.start()
                 self._readers[path] = reader
 
         if not current_paths:
             logger.debug("no receiver path found yet")
+
+    def _on_reader_gave_up(self, path: bytes) -> None:
+        self._given_up_paths.add(path)
+        self._readers.pop(path, None)
 
     # ------------------------------------------------------------------
     # バックグラウンドスレッドからのレポートを受けて状態を更新する
