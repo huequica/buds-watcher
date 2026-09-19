@@ -86,8 +86,10 @@ KDE Plasma はこの対応が標準で入っているので追加設定は不要
 
 Python環境を用意せずに使いたい場合向けに、[PyInstaller](https://pyinstaller.org/)で
 単一exeにまとめられる。`master`にpushすると GitHub Actions
-(`.github/workflows/release.yml`)がWindows上で自動ビルドし、[Releases](../../releases)の
-`latest`タグに`buds-watcher.exe`をアップロードする(既存のリリースは上書きされる)。
+(`.github/workflows/release.yml`)がWindows上で自動ビルドし、[Releases](../../releases)に
+`pyproject.toml`の`version`(`v0.1.0`のような形式)をタグ名として`buds-watcher.exe`を
+アップロードする。リリースするバージョンは、masterへのPRを作る際に`pyproject.toml`の
+`version`を上げておくこと(上げ忘れて同じバージョンでpushすると、既存リリースが上書きされる)。
 
 手元でビルドする場合(Windows上で):
 
