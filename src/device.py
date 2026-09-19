@@ -24,6 +24,7 @@ Windowsではコレクションごとに別々のHIDデバイスパスとして�
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, QTimer, Signal
@@ -33,10 +34,28 @@ if TYPE_CHECKING:
     # 型チェッカーからは型注釈に使えない(見えない)。型注釈専用に別名でimportする。
     import hid as hid_types
 
-try:
-    import hid
-except ImportError:  # hidapiがインストールされていない環境向けフォールバック
-    hid = None  # type: ignore[assignment]
+logger = logging.getLogger(__name__)
+
+# `hid`はここでは遅延importする: モジュール読み込み直後にimportすると、
+# main.py の setup_logging() より前に実行されてしまい、一番知りたい
+# 「importできたか」のログがロギング設定前に失われるため。
+hid = None  # type: ignore[assignment]
+_hid_import_attempted = False
+
+
+def _ensure_hid_imported() -> None:
+    global hid, _hid_import_attempted
+    if _hid_import_attempted:
+        return
+    _hid_import_attempted = True
+    try:
+        import hid as _hid_module
+    except ImportError:  # hidapiがインストールされていない環境向けフォールバック
+        logger.exception("failed to import `hid` module; device monitoring is disabled")
+        return
+    hid = _hid_module
+    logger.info("hidapi module loaded: %s", getattr(hid, "__file__", "?"))
+
 
 SONY_VENDOR_ID = 0x054C
 INZONE_BUDS_PRODUCT_ID = 0x0EC2
@@ -55,20 +74,24 @@ DISCOVERY_INTERVAL_MS = 3000
 
 def _enumerate_receiver_paths() -> list[bytes]:
     """INZONE Budsレシーバーに属するHIDデバイスパスを重複無しで列挙する。"""
+    _ensure_hid_imported()
     if hid is None:
         return []
     try:
         entries = hid.enumerate(SONY_VENDOR_ID, INZONE_BUDS_PRODUCT_ID)
     except Exception:
+        logger.exception("hid.enumerate() failed")
         return []
 
     seen: set[bytes] = set()
     paths: list[bytes] = []
     for entry in entries:
+        logger.debug("enumerated HID entry: %r", entry)
         path = entry.get("path")
         if path and path not in seen:
             seen.add(path)
             paths.append(path)
+    logger.debug("enumerated %d unique receiver path(s): %r", len(paths), paths)
     return paths
 
 
@@ -94,9 +117,11 @@ class _ReceiverReaderThread(QThread):
                 device = hid.Device(path=self._path)
             except Exception:
                 # レシーバーが抜かれた、権限不足など。少し待って再試行する。
+                logger.exception("failed to open HID path %r", self._path)
                 self.msleep(RECONNECT_DELAY_MS)
                 continue
 
+            logger.info("opened HID path %r", self._path)
             try:
                 self._read_loop(device)
             finally:
@@ -114,15 +139,23 @@ class _ReceiverReaderThread(QThread):
                 data = device.read(64, timeout=READ_TIMEOUT_MS)
             except Exception:
                 # レシーバーが抜かれた等。外側のループで開き直しを試みる。
+                logger.exception("read() failed on HID path %r", self._path)
                 return
 
             if not data or len(data) < MIN_STATUS_REPORT_LEN:
                 continue
             if data[8] != STATUS_REPORT_CLASS or data[9] != STATUS_REPORT_TYPE:
+                logger.debug("unrelated report on %r: %r", self._path, data)
                 continue
 
             left_connected = bool(data[LEFT_STATUS_OFFSET])
             right_connected = bool(data[RIGHT_STATUS_OFFSET])
+            logger.info(
+                "status report on %r: left=%s right=%s",
+                self._path,
+                left_connected,
+                right_connected,
+            )
             self.status_report.emit(left_connected, right_connected)
 
 
@@ -146,10 +179,12 @@ class DeviceMonitor(QObject):
         self._discovery_timer.timeout.connect(self._discover)
 
     def start(self) -> None:
+        logger.info("DeviceMonitor starting")
         self._discover()
         self._discovery_timer.start(DISCOVERY_INTERVAL_MS)
 
     def stop(self) -> None:
+        logger.info("DeviceMonitor stopping")
         self._discovery_timer.stop()
         for reader in self._readers.values():
             reader.request_stop()
@@ -165,16 +200,21 @@ class DeviceMonitor(QObject):
 
         for path in list(self._readers):
             if path not in current_paths:
+                logger.info("receiver path disappeared: %r", path)
                 reader = self._readers.pop(path)
                 reader.request_stop()
                 reader.wait(READ_TIMEOUT_MS + 500)
 
         for path in current_paths:
             if path not in self._readers:
+                logger.info("receiver path found, starting reader: %r", path)
                 reader = _ReceiverReaderThread(path, self)
                 reader.status_report.connect(self._on_status_report)
                 reader.start()
                 self._readers[path] = reader
+
+        if not current_paths:
+            logger.debug("no receiver path found yet")
 
     # ------------------------------------------------------------------
     # バックグラウンドスレッドからのレポートを受けて状態を更新する
