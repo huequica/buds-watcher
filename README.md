@@ -22,7 +22,7 @@ Nix (flakes) を使う場合:
 ```bash
 nix develop
 uv sync
-uv run python3 main.py
+uv run poe app
 ```
 
 [direnv](https://direnv.net/) を使っていれば `.envrc`(`use flake`)により
@@ -32,8 +32,22 @@ Nixを使わない場合は [uv](https://docs.astral.sh/uv/) を直接インス�
 
 ```bash
 uv sync
-uv run python3 main.py
+uv run poe app
 ```
+
+### タスク一覧
+
+uv自体にはnpmの`package.json`の`scripts`に相当する機能は無いため、
+[Poe the Poet](https://poethepoet.natn.io/) で代用している(`pyproject.toml`の
+`[tool.poe.tasks]`)。`uv run poe <タスク名>`で実行する:
+
+| タスク | 内容 |
+| --- | --- |
+| `app` | アプリを起動する |
+| `lint` | `ruff check .` |
+| `format` | `ruff format .` |
+| `format-check` | `ruff format --check .`(CIと同じ) |
+| `check` | `lint` + `format-check` |
 
 ### Linuxでの追加設定(hidrawへのアクセス権限)
 

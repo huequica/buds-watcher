@@ -13,6 +13,7 @@ package = false
 
 [dependency-groups]
 dev = [
+    "poethepoet>=0.48.0",
     "ruff>=0.16.8",
 ]
 
@@ -21,3 +22,11 @@ line-length = 100  # 日本語コメントが多く、既定の88だと頻繁に
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]  # pycodestyle, pyflakes, isort
+
+# `uv run poe <task>` で実行する(npmのpackage.json scriptsに相当)
+[tool.poe.tasks]
+app = "python3 main.py"
+lint = "ruff check ."
+format = "ruff format ."
+format-check = "ruff format --check ."
+check = ["lint", "format-check"]
