@@ -1,0 +1,22 @@
+name: Format and lint via Ruff
+
+on:
+  pull_request:
+    paths:
+      - "**/*.py"
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      # ruff以外の依存(PySide6等)はlintに不要なので入れない
+      - run: uv sync --only-group dev --no-install-project
+
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
