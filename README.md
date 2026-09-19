@@ -64,14 +64,3 @@ KDE Plasma はこの対応が標準で入っているので追加設定は不要
   `wlr-layer-shell` プロトコル(KDEなら `layer-shell-qt`)への対応が必要だが、
   PySide6用の公式バインディングが無いため未対応。**X11セッションでは正しく
   右上に固定表示される**ため、位置を重視する場合はX11セッションの使用を推奨する。
-
-## ファイル構成
-
-```
-main.py         エントリーポイント
-tray.py         システムトレイアイコン・メニュー
-notify.py       独自オーバーレイ通知ウィジェット
-mainwindow.py   ステータス表示ウィンドウ
-device.py       イヤホン監視(hidapi経由でUSBレシーバーのHIDレポートを監視)
-requirements.txt
-```
