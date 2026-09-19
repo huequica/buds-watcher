@@ -17,11 +17,19 @@ Sony INZONE Buds の左右イヤホンの切断を検知し、OS標準の通知�
 
 ## セットアップ
 
+Nix (flakes) を使う場合:
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate   # Windowsは venv\Scripts\activate
-pip install -r requirements.txt
-python3 main.py
+nix develop
+uv sync
+uv run python3 main.py
+```
+
+Nixを使わない場合は [uv](https://docs.astral.sh/uv/) を直接インストールして:
+
+```bash
+uv sync
+uv run python3 main.py
 ```
 
 ### Linuxでの追加設定(hidrawへのアクセス権限)
