@@ -13,7 +13,7 @@ Sony INZONE Buds の左右イヤホンの切断を検知し、OS標準の通知�
   左右どちらかが切断/再接続されると画面にオーバーレイ通知が出る(OS標準通知は不使用)
 - トレイアイコンの色でL/Rの状態を表示(緑=OK / 赤=切断)
 
-実プロトコルの解析結果は `device.py` のコメントと `HANDOFF.md` を参照。
+実プロトコルの解析結果は `src/device.py` のコメントと `HANDOFF.md` を参照。
 
 ## セットアップ
 
@@ -51,7 +51,7 @@ uv自体にはnpmの`package.json`の`scripts`に相当する機能は無いた�
 
 ### Linuxでの追加設定(hidrawへのアクセス権限)
 
-`device.py` は `/dev/hidraw*` を直接読むため、root以外のユーザーでもレシーバーの
+`src/device.py` は `/dev/hidraw*` を直接読むため、root以外のユーザーでもレシーバーの
 HIDデバイスに読み取りアクセスできるよう udev ルールが必要。例:
 
 ```

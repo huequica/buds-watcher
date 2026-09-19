@@ -25,7 +25,7 @@ select = ["E", "F", "I"]  # pycodestyle, pyflakes, isort
 
 # `uv run poe <task>` で実行する(npmのpackage.json scriptsに相当)
 [tool.poe.tasks]
-app = "python3 main.py"
+app = "python3 src/main.py"
 lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
