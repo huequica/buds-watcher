@@ -16,7 +16,14 @@ USBレシーバー(VID=0x054c, PID=0x0ec2)は標準のHIDインターフェー�
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import QObject, QThread, Signal
+
+if TYPE_CHECKING:
+    # `hid`はtry/except配下でNoneにフォールバックしうる変数のため、
+    # 型チェッカーからは型注釈に使えない(見えない)。型注釈専用に別名でimportする。
+    import hid as hid_types
 
 try:
     import hid
@@ -72,7 +79,7 @@ class _ReceiverReaderThread(QThread):
             if not self._stop_requested:
                 self.msleep(RECONNECT_DELAY_MS)
 
-    def _read_loop(self, device: "hid.Device") -> None:
+    def _read_loop(self, device: "hid_types.Device") -> None:
         while not self._stop_requested:
             try:
                 data = device.read(64, timeout=READ_TIMEOUT_MS)
