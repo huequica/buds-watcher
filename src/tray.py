@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+from appinfo import APP_NAME
+
 
 def make_status_icon(left_ok: bool, right_ok: bool) -> QIcon:
     """L/Rの状態に応じて色分けした簡易アイコンを動的に生成する。"""
@@ -36,7 +38,7 @@ class TrayIcon(QSystemTrayIcon):
         self._device = device_monitor
 
         self.setIcon(make_status_icon(True, True))
-        self.setToolTip("INZONE Buds Monitor")
+        self.setToolTip(APP_NAME)
 
         menu = QMenu()
 

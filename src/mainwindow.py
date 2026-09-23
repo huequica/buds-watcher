@@ -3,11 +3,13 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from appinfo import APP_NAME
+
 
 class MainWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("INZONE Buds Monitor")
+        self.setWindowTitle(APP_NAME)
         self.resize(320, 160)
 
         self._left_ok = True
