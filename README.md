@@ -1,4 +1,5 @@
 # buds-watcher
+[日本語の README はこちら](./README_ja.md)
 
 An app that notifies you on screen when your Sony INZONE Buds earbuds disconnect or reconnect.
 
