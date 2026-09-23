@@ -56,6 +56,5 @@ class MainWindow(QWidget):
         return f"{side}: {status}"
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        # ウィンドウを閉じてもアプリ自体は常駐し続ける(トレイに残る)
         event.ignore()
         self.hide()

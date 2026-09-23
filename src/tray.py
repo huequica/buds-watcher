@@ -1,13 +1,3 @@
-"""
-システムトレイアイコンとその右クリックメニュー。
-
-注意:
-  - GNOME (標準設定) はシステムトレイ自体を廃止しているため、
-    "AppIndicator and KStatusNotifierItem Support" 等の拡張機能を
-    入れないとアイコンが表示されない。README にその旨を記載する。
-  - KDE Plasma はKStatusNotifierItemを標準でサポートしているため問題なく動く。
-"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import Qt

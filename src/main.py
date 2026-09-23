@@ -14,7 +14,7 @@ from tray import TrayIcon
 def main() -> int:
     setup_logging()
     app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)  # ウィンドウを閉じても常駐を続ける
+    app.setQuitOnLastWindowClosed(False)
 
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.warning(
