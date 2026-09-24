@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import sys
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 
+from appinfo import ICON_PNG_PATH
 from applog import setup_logging
 from device import DeviceMonitor
 from mainwindow import MainWindow
@@ -15,6 +17,7 @@ def main() -> int:
     setup_logging()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    app.setWindowIcon(QIcon(str(ICON_PNG_PATH)))
 
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.warning(

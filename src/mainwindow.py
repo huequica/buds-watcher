@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from appinfo import APP_NAME
+from appinfo import APP_NAME, ICON_PNG_PATH
 
 
 class MainWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(QIcon(str(ICON_PNG_PATH)))
         self.resize(320, 160)
 
         self._left_ok = True
