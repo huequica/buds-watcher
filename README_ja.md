@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./icons/app.png" width="128" height="128" alt="buds-watcher icon">
+</p>
+
 # buds-watcher
 
 Sony Inzone buds のイヤホンの切断、再接続を画面に通知するアプリ

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./icons/app.png" width="128" height="128" alt="buds-watcher icon">
+</p>
+
 # buds-watcher
 
 [日本語の README はこちら](./README_ja.md)
