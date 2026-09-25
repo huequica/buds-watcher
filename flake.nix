@@ -88,6 +88,13 @@
             --set QML2_IMPORT_PATH "${pkgs.kdePackages.layer-shell-qt}/lib/qt-6/qml" \
             --set FONTCONFIG_FILE "${fontsConf}"
 
+          # デスクトップエントリ(アプリランチャーに登録される)。Execはnix profile
+          # のPATH設定に依存せず動くよう、$out/bin以下への絶対パスにしておく。
+          mkdir -p $out/share/applications $out/share/icons/hicolor/256x256/apps
+          sed "s|Exec=buds-watcher|Exec=$out/bin/buds-watcher|" \
+            buds-watcher.desktop > $out/share/applications/buds-watcher.desktop
+          cp icons/app.png $out/share/icons/hicolor/256x256/apps/buds-watcher.png
+
           runHook postInstall
         '';
 

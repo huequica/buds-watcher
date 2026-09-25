@@ -44,7 +44,31 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
 好きな方法で入手してください
 
 - [Releases](https://github.com/huequica/buds-watcher/releases) から最新の `buds-watcher` バイナリをダウンロードし、`chmod +x buds-watcher` で実行権限を付けて実行する
-- Nix flakes を使っている場合: `nix run github:huequica/buds-watcher`、または flake input としてこのリポジトリを追加して `packages.<system>.default` を参照する
+- Nix flakes を使っている場合、そのまま実行するなら:
+
+  ```sh
+  nix run github:huequica/buds-watcher
+  ```
+
+  profile にインストールするなら:
+
+  ```sh
+  nix profile install github:huequica/buds-watcher
+  ```
+
+  自分のflakeにinputとして追加して `packages.<system>.default` を参照するなら:
+
+  ```nix
+  {
+    inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+    outputs = { nixpkgs, buds-watcher, ... }: {
+      # 例: NixOS/home-managerの設定内で
+      environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+    };
+  }
+  ```
+
 - リポジトリを clone してソースから実行する
   1. `nix develop` で DevShell に入る
      - nix を使用していなければこのステップは無視してください
@@ -53,6 +77,11 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
   3. `uv run poe app` で実行
 
 システムトレイにアイコンが表示されていれば OK です
+
+### デスクトップエントリ(任意)
+
+flake経由(`nix profile install` やNixOS/home-managerのパッケージとして)でインストールした場合は、アプリランチャーへの登録も自動で行われます  
+Releases からバイナリをダウンロードした場合は自分で登録できます。バイナリを `PATH` の通った場所(例: `~/.local/bin/buds-watcher`)に置いた上で、[`buds-watcher.desktop`](./buds-watcher.desktop) を `~/.local/share/applications/` に、アイコンを `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png`([`icons/app.png`](./icons/app.png) から)にコピーしてください
 
 ### Ubuntu などの GNOME 環境
 

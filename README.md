@@ -46,7 +46,31 @@ Then add your user to the `input` group, and apply the change by rebooting or ru
 Pick whichever fits you:
 
 - Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it
-- If you use Nix flakes: `nix run github:huequica/buds-watcher`, or add this repo as a flake input and reference `packages.<system>.default`
+- If you use Nix flakes, run it directly:
+
+  ```sh
+  nix run github:huequica/buds-watcher
+  ```
+
+  or install it into your profile:
+
+  ```sh
+  nix profile install github:huequica/buds-watcher
+  ```
+
+  or add it as an input to your own flake and reference `packages.<system>.default`:
+
+  ```nix
+  {
+    inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+    outputs = { nixpkgs, buds-watcher, ... }: {
+      # e.g. in a NixOS/home-manager config:
+      environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+    };
+  }
+  ```
+
 - Clone the repository and run it from source:
   1. Enter the dev shell with `nix develop`
      - Skip this step if you're not using Nix
@@ -55,6 +79,11 @@ Pick whichever fits you:
   3. Run it with `uv run poe app`
 
 You're good to go if an icon shows up in the system tray.
+
+### Desktop entry (optional)
+
+Installing via the flake (`nix profile install` or as a system/home-manager package) already registers buds-watcher with your app launcher.  
+If you downloaded the binary from Releases instead, you can register it yourself: put the binary somewhere on your `PATH` (e.g. `~/.local/bin/buds-watcher`), then copy [`buds-watcher.desktop`](./buds-watcher.desktop) to `~/.local/share/applications/` and the icon to `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png` (from [`icons/app.png`](./icons/app.png)).
 
 ### Ubuntu and other GNOME environments
 
