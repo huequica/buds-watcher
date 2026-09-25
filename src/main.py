@@ -10,11 +10,13 @@ from applog import setup_logging
 from device import DeviceMonitor
 from mainwindow import MainWindow
 from notify import ACCENT_CONNECTED, ACCENT_DISCONNECTED, create_overlay_notification
+from settings import Settings
 from tray import TrayIcon
 
 
 def main() -> int:
-    setup_logging()
+    settings = Settings.load()
+    setup_logging(settings.dump_log_file)
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setWindowIcon(QIcon(str(ICON_PNG_PATH)))
@@ -30,9 +32,11 @@ def main() -> int:
 
     window = MainWindow()
     device = DeviceMonitor()
-    notification = create_overlay_notification()
+    notification = create_overlay_notification(settings.monitor_name)
 
-    tray = TrayIcon(main_window=window, device_monitor=device)
+    tray = TrayIcon(
+        main_window=window, device_monitor=device, settings=settings, notification=notification
+    )
     tray.show()
 
     def on_left_disconnected() -> None:

@@ -13,7 +13,11 @@ def log_file_path() -> Path:
     return base / "buds-watcher.log"
 
 
-def setup_logging() -> None:
+def setup_logging(enabled: bool = True) -> None:
+    if not enabled:
+        # ファイルハンドラを外し、ログはほぼ出力しない(設定でオフにされた場合)。
+        logging.basicConfig(level=logging.CRITICAL + 1, force=True)
+        return
     logging.basicConfig(
         filename=str(log_file_path()),
         level=logging.INFO,
