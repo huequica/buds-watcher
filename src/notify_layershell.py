@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 _QML_PATH = Path(__file__).resolve().parent / "qml" / "overlay_notification.qml"
@@ -31,6 +31,13 @@ class LayerShellOverlayNotification:
             raise RuntimeError(f"failed to load {_QML_PATH}")
         self._window = self._engine.rootObjects()[0]
         self._seq = 0
+
+    def set_monitor(self, name: str | None) -> None:
+        screen = None
+        if name:
+            screen = next((s for s in QGuiApplication.screens() if s.name() == name), None)
+        self._window.setProperty("targetScreen", screen)
+        self._window.setProperty("useTargetScreen", screen is not None)
 
     def show_message(self, title: str, message: str, accent: QColor) -> None:
         self._seq += 1

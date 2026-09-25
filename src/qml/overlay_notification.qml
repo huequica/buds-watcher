@@ -1,3 +1,4 @@
+import QtQml
 import QtQuick
 import QtQuick.Window
 import org.kde.layershell 1.0 as LayerShell
@@ -11,19 +12,23 @@ Window {
 
     // Waylandのlayer-shellプロトコルで画面端に固定表示する。
     // 「プライマリモニター」はWaylandに統一的な概念が無くQtのprimaryScreen()も
-    // 信頼できないため、wantsToBeOnActiveScreenで「今フォーカスがある画面」に
-    // 出す方針にしている(実機検証済み)。
+    // 信頼できないため、既定ではwantsToBeOnActiveScreenで「今フォーカスがある
+    // 画面」に出す方針にしている(実機検証済み)。設定で特定モニターが選ばれた
+    // 場合はuseTargetScreen/targetScreen側を使う(こちらはベストエフォート)。
     LayerShell.Window.layer: LayerShell.Window.LayerOverlay
     LayerShell.Window.anchors: LayerShell.Window.AnchorTop | LayerShell.Window.AnchorRight
     LayerShell.Window.margins.top: 24
     LayerShell.Window.margins.right: 24
     LayerShell.Window.exclusionZone: -1
-    LayerShell.Window.wantsToBeOnActiveScreen: true
+    LayerShell.Window.wantsToBeOnActiveScreen: !root.useTargetScreen
+    LayerShell.Window.screen: root.useTargetScreen ? root.targetScreen : null
     LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityNone
 
     property string titleText: ""
     property string messageText: ""
     property color accentColor: "#dc3c3c"
+    property QtObject targetScreen: null
+    property bool useTargetScreen: false
     // Pythonからはこの値をインクリメントするだけで新しい通知を出せる
     // (invokeMethodの型変換に頼らず、プロパティ設定だけで完結させるため)。
     property int messageSeq: 0

@@ -9,8 +9,9 @@ from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
 
 
-class _Overlay(Protocol):
+class Overlay(Protocol):
     def show_message(self, title: str, message: str, accent: QColor) -> None: ...
+    def set_monitor(self, name: str | None) -> None: ...
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class OverlayNotification(QWidget):
         self._title = ""
         self._message = ""
         self._accent = self.ACCENT_DISCONNECTED
+        self._monitor_name: str | None = None
         # Waylandではウィンドウ単位のopacity(setWindowOpacity)がQtのプラットフォーム
         # プラグインでサポートされていないため、フェードはウィンドウ透明度ではなく
         # 描画内容のアルファ値で自前で行う。
@@ -63,6 +65,9 @@ class OverlayNotification(QWidget):
         self.update()
 
     contentOpacity = Property(float, _get_content_opacity, _set_content_opacity)
+
+    def set_monitor(self, name: str | None) -> None:
+        self._monitor_name = name
 
     def show_message(self, title: str, message: str, accent: QColor) -> None:
         self._title = title
@@ -95,7 +100,7 @@ class OverlayNotification(QWidget):
             self.hide()
 
     def _move_to_corner(self) -> None:
-        screen = QApplication.primaryScreen()
+        screen = self._target_screen()
         geo = screen.availableGeometry() if screen else None
         if geo is None:
             self.move(QPoint(100, 100))
@@ -103,6 +108,13 @@ class OverlayNotification(QWidget):
         x = geo.right() - self.WIDTH - self.MARGIN
         y = geo.top() + self.MARGIN
         self.move(QPoint(x, y))
+
+    def _target_screen(self):
+        if self._monitor_name:
+            for screen in QApplication.screens():
+                if screen.name() == self._monitor_name:
+                    return screen
+        return QApplication.primaryScreen()
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt override)
         painter = QPainter(self)
@@ -136,20 +148,26 @@ class OverlayNotification(QWidget):
             painter.drawText(24, 56 + i * line_height, line)
 
 
-def create_overlay_notification() -> _Overlay:
+def create_overlay_notification(monitor_name: str | None = None) -> Overlay:
     """
     Wayland + layer-shell-qt (org.kde.layershell) が使える環境ではそちらで
     画面端に正しく固定表示し、使えない環境(X11、Windows、layer-shell-qt
     未インストールのWayland環境など)では通常のQtWidgetsオーバーレイに
     フォールバックする。
     """
+    overlay: Overlay
     if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":
         try:
             from notify_layershell import LayerShellOverlayNotification
 
-            return LayerShellOverlayNotification()
+            overlay = LayerShellOverlayNotification()
         except Exception:
             logger.exception(
                 "layer-shell overlay unavailable, falling back to the QtWidgets overlay"
             )
-    return OverlayNotification()
+            overlay = OverlayNotification()
+    else:
+        overlay = OverlayNotification()
+
+    overlay.set_monitor(monitor_name)
+    return overlay
