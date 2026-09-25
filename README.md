@@ -43,40 +43,66 @@ Then add your user to the `input` group, and apply the change by rebooting or ru
 
 ### 2. Get the application
 
-Pick whichever fits you:
+Pick whichever fits you.
 
-- Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it
-- If you use Nix flakes, run it directly:
+#### From GitHub Releases
 
-  ```sh
-  nix run github:huequica/buds-watcher
-  ```
+Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it.
 
-  or install it into your profile:
+#### If you use Nix flakes
 
-  ```sh
-  nix profile install github:huequica/buds-watcher
-  ```
+Run it directly without installing:
 
-  or add it as an input to your own flake and reference `packages.<system>.default`:
+```sh
+nix run github:huequica/buds-watcher
+```
 
-  ```nix
-  {
-    inputs.buds-watcher.url = "github:huequica/buds-watcher";
+Install it into your profile:
 
-    outputs = { nixpkgs, buds-watcher, ... }: {
-      # e.g. in a NixOS/home-manager config:
-      environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+```sh
+nix profile install github:huequica/buds-watcher
+```
+
+Add it as an input to your own flake and reference `packages.<system>.default`, e.g. in a NixOS config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, buds-watcher, ... }: {
+    # e.g. in configuration.nix
+    environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+  };
+}
+```
+
+or in a home-manager config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, home-manager, buds-watcher, ... }: {
+    homeConfigurations.<username> = home-manager.lib.homeManagerConfiguration {
+      # ... (pkgs, system, etc.)
+      modules = [
+        {
+          home.packages = [ buds-watcher.packages.x86_64-linux.default ];
+        }
+      ];
     };
-  }
-  ```
+  };
+}
+```
 
-- Clone the repository and run it from source:
-  1. Enter the dev shell with `nix develop`
-     - Skip this step if you're not using Nix
-     - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
-  2. Fetch dependencies with `uv sync`
-  3. Run it with `uv run poe app`
+#### From source
+
+1. Clone the repository
+2. Enter the dev shell with `nix develop`
+   - Skip this step if you're not using Nix
+   - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
+3. Fetch dependencies with `uv sync`
+4. Run it with `uv run poe app`
 
 You're good to go if an icon shows up in the system tray.
 

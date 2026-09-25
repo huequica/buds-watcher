@@ -43,38 +43,64 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
 
 好きな方法で入手してください
 
-- [Releases](https://github.com/huequica/buds-watcher/releases) から最新の `buds-watcher` バイナリをダウンロードし、`chmod +x buds-watcher` で実行権限を付けて実行する
-- Nix flakes を使っている場合、そのまま実行するなら:
+#### GitHub Release から入手
 
-  ```sh
-  nix run github:huequica/buds-watcher
-  ```
+[Releases](https://github.com/huequica/buds-watcher/releases) から最新の `buds-watcher` バイナリをダウンロードし、`chmod +x buds-watcher` で実行権限を付けて実行してください
 
-  profile にインストールするなら:
+#### Nix flakes を使っている場合
 
-  ```sh
-  nix profile install github:huequica/buds-watcher
-  ```
+インストールせずに実行する場合は
 
-  自分のflakeにinputとして追加して `packages.<system>.default` を参照するなら:
+```sh
+nix run github:huequica/buds-watcher
+```
 
-  ```nix
-  {
-    inputs.buds-watcher.url = "github:huequica/buds-watcher";
+profile にインストールするなら
 
-    outputs = { nixpkgs, buds-watcher, ... }: {
-      # 例: NixOS/home-managerの設定内で
-      environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+```sh
+nix profile install github:huequica/buds-watcher
+```
+
+自分のflakeにinputとして追加して `packages.<system>.default` を参照するなら、NixOSの設定であれば
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, buds-watcher, ... }: {
+    # configuration.nix なら
+    environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+  };
+}
+```
+
+home-manager の設定であれば
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, home-manager, buds-watcher, ... }: {
+    homeConfigurations.<ユーザー名> = home-manager.lib.homeManagerConfiguration {
+      # ... (pkgs, system など)
+      modules = [
+        {
+          home.packages = [ buds-watcher.packages.x86_64-linux.default ];
+        }
+      ];
     };
-  }
-  ```
+  };
+}
+```
 
-- リポジトリを clone してソースから実行する
-  1. `nix develop` で DevShell に入る
-     - nix を使用していなければこのステップは無視してください
-     - direnv を併用していれば `direnv allow` で自動的に DevShell に入れます
-  2. `uv sync` で依存を落とす
-  3. `uv run poe app` で実行
+#### ソースから実行する
+
+1. リポジトリを clone する
+2. `nix develop` で DevShell に入る
+   - nix を使用していなければこのステップは無視してください
+   - direnv を併用していれば `direnv allow` で自動的に DevShell に入れます
+3. `uv sync` で依存を落とす
+4. `uv run poe app` で実行
 
 システムトレイにアイコンが表示されていれば OK です
 
