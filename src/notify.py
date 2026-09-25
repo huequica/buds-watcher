@@ -1,8 +1,23 @@
 from __future__ import annotations
 
+import logging
+import os
+from typing import Protocol
+
 from PySide6.QtCore import Property, QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
+
+
+class _Overlay(Protocol):
+    def show_message(self, title: str, message: str, accent: QColor) -> None: ...
+
+
+logger = logging.getLogger(__name__)
+
+# OverlayNotification / LayerShellOverlayNotification のどちらからも参照する共有定数。
+ACCENT_DISCONNECTED = QColor(220, 60, 60)
+ACCENT_CONNECTED = QColor(70, 190, 120)
 
 
 class OverlayNotification(QWidget):
@@ -12,8 +27,8 @@ class OverlayNotification(QWidget):
     HEIGHT = 84
     MARGIN = 24
 
-    ACCENT_DISCONNECTED = QColor(220, 60, 60)
-    ACCENT_CONNECTED = QColor(70, 190, 120)
+    ACCENT_DISCONNECTED = ACCENT_DISCONNECTED
+    ACCENT_CONNECTED = ACCENT_CONNECTED
 
     def __init__(self) -> None:
         super().__init__(
@@ -49,10 +64,10 @@ class OverlayNotification(QWidget):
 
     contentOpacity = Property(float, _get_content_opacity, _set_content_opacity)
 
-    def show_message(self, title: str, message: str, accent: QColor | None = None) -> None:
+    def show_message(self, title: str, message: str, accent: QColor) -> None:
         self._title = title
         self._message = message
-        self._accent = accent if accent is not None else self.ACCENT_DISCONNECTED
+        self._accent = accent
         self._move_to_corner()
         self.contentOpacity = 0.0
         self.show()
@@ -119,3 +134,22 @@ class OverlayNotification(QWidget):
         line_height = 18
         for i, line in enumerate(self._message.split("\n")):
             painter.drawText(24, 56 + i * line_height, line)
+
+
+def create_overlay_notification() -> _Overlay:
+    """
+    Wayland + layer-shell-qt (org.kde.layershell) が使える環境ではそちらで
+    画面端に正しく固定表示し、使えない環境(X11、Windows、layer-shell-qt
+    未インストールのWayland環境など)では通常のQtWidgetsオーバーレイに
+    フォールバックする。
+    """
+    if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":
+        try:
+            from notify_layershell import LayerShellOverlayNotification
+
+            return LayerShellOverlayNotification()
+        except Exception:
+            logger.exception(
+                "layer-shell overlay unavailable, falling back to the QtWidgets overlay"
+            )
+    return OverlayNotification()
