@@ -17,7 +17,7 @@ def settings_file_path() -> Path:
 
 @dataclass
 class Settings:
-    dump_log_file: bool = True
+    dump_log_file: bool = False
     monitor_name: str | None = None
 
     @classmethod
@@ -29,7 +29,7 @@ class Settings:
             with path.open("r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             return cls(
-                dump_log_file=bool(data.get("dumpLogFile", True)),
+                dump_log_file=bool(data.get("dumpLogFile", False)),
                 monitor_name=data.get("monitorName"),
             )
         except Exception:
