@@ -26,8 +26,7 @@ Sony Inzone buds のイヤホンの切断、再接続を画面に通知するア
 
 ## Linux
 
-リリースの際に Linux 向けにシングルバイナリに固めていないので現状コードを clone して自分で実行する必要があります  
-また `libusb` を経由してアクセスしないといけないので `/dev/bus/usb/*/*` への読み書き権限も必要になります
+`libusb` を経由してアクセスしないといけないので `/dev/bus/usb/*/*` への読み書き権限も必要になります
 
 ### 1. USB 読み書き権限の設定
 
@@ -40,7 +39,61 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
 
 その後ユーザーを `input` グループに入れた後再起動 or `udevadm control --reload-rules && udevadm trigger` で設定を反映してください
 
-### 2. アプリケーション起動
+### 2. アプリケーションの入手
+
+好きな方法で入手してください
+
+#### GitHub Release から入手
+
+[Releases](https://github.com/huequica/buds-watcher/releases) から最新の `buds-watcher` バイナリをダウンロードし、`chmod +x buds-watcher` で実行権限を付けて実行してください
+
+#### Nix flakes を使っている場合
+
+インストールせずに実行する場合は
+
+```sh
+nix run github:huequica/buds-watcher
+```
+
+profile にインストールするなら
+
+```sh
+nix profile install github:huequica/buds-watcher
+```
+
+自分のflakeにinputとして追加して `packages.<system>.default` を参照するなら、NixOSの設定であれば
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, buds-watcher, ... }: {
+    # configuration.nix なら
+    environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+  };
+}
+```
+
+home-manager の設定であれば
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, home-manager, buds-watcher, ... }: {
+    homeConfigurations.<ユーザー名> = home-manager.lib.homeManagerConfiguration {
+      # ... (pkgs, system など)
+      modules = [
+        {
+          home.packages = [ buds-watcher.packages.x86_64-linux.default ];
+        }
+      ];
+    };
+  };
+}
+```
+
+#### ソースから実行する
 
 1. リポジトリを clone する
 2. `nix develop` で DevShell に入る
@@ -48,7 +101,14 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
    - direnv を併用していれば `direnv allow` で自動的に DevShell に入れます
 3. `uv sync` で依存を落とす
 4. `uv run poe app` で実行
-5. システムトレイにアイコンが表示されていれば　OK
+
+システムトレイにアイコンが表示されていれば OK です
+
+### デスクトップエントリ(任意)
+
+flake経由(`nix profile install` やNixOS/home-managerのパッケージとして)でインストールした場合は、アプリランチャーへの登録も自動で行われます  
+Releases からバイナリをダウンロードした場合は自分で登録できます  
+バイナリを `PATH` の通った場所(例: `~/.local/bin/buds-watcher`)に置いた上で [`buds-watcher.desktop`](./buds-watcher.desktop) を `~/.local/share/applications/` に、アイコンを `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png`([`icons/app.png`](./icons/app.png) から)にコピーしてください
 
 ### Ubuntu などの GNOME 環境
 

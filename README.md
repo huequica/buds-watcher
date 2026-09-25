@@ -28,8 +28,6 @@ An app that notifies you on screen when your Sony INZONE Buds earbuds disconnect
 
 ## Linux
 
-Releases aren't packaged as a single binary for Linux yet, so you currently need to clone the code and
-run it yourself.  
 It also needs to access the device via `libusb`, so read/write permission on `/dev/bus/usb/*/*` is required.
 
 ### 1. Set up USB read/write permissions
@@ -43,7 +41,61 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
 
 Then add your user to the `input` group, and apply the change by rebooting or running `udevadm control --reload-rules && udevadm trigger`.
 
-### 2. Run the application
+### 2. Get the application
+
+Pick whichever fits you.
+
+#### From GitHub Releases
+
+Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it.
+
+#### If you use Nix flakes
+
+Run it directly without installing:
+
+```sh
+nix run github:huequica/buds-watcher
+```
+
+Install it into your profile:
+
+```sh
+nix profile install github:huequica/buds-watcher
+```
+
+Add it as an input to your own flake and reference `packages.<system>.default`, e.g. in a NixOS config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, buds-watcher, ... }: {
+    # e.g. in configuration.nix
+    environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+  };
+}
+```
+
+or in a home-manager config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, home-manager, buds-watcher, ... }: {
+    homeConfigurations.<username> = home-manager.lib.homeManagerConfiguration {
+      # ... (pkgs, system, etc.)
+      modules = [
+        {
+          home.packages = [ buds-watcher.packages.x86_64-linux.default ];
+        }
+      ];
+    };
+  };
+}
+```
+
+#### From source
 
 1. Clone the repository
 2. Enter the dev shell with `nix develop`
@@ -51,7 +103,13 @@ Then add your user to the `input` group, and apply the change by rebooting or ru
    - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
 3. Fetch dependencies with `uv sync`
 4. Run it with `uv run poe app`
-5. You're good to go if an icon shows up in the system tray
+
+You're good to go if an icon shows up in the system tray.
+
+### Desktop entry (optional)
+
+Installing via the flake (`nix profile install` or as a system/home-manager package) already registers buds-watcher with your app launcher.  
+If you downloaded the binary from Releases instead, you can register it yourself: put the binary somewhere on your `PATH` (e.g. `~/.local/bin/buds-watcher`), then copy [`buds-watcher.desktop`](./buds-watcher.desktop) to `~/.local/share/applications/` and the icon to `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png` (from [`icons/app.png`](./icons/app.png)).
 
 ### Ubuntu and other GNOME environments
 
