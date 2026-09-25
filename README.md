@@ -28,8 +28,6 @@ An app that notifies you on screen when your Sony INZONE Buds earbuds disconnect
 
 ## Linux
 
-Releases aren't packaged as a single binary for Linux yet, so you currently need to clone the code and
-run it yourself.  
 It also needs to access the device via `libusb`, so read/write permission on `/dev/bus/usb/*/*` is required.
 
 ### 1. Set up USB read/write permissions
@@ -43,15 +41,20 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660"
 
 Then add your user to the `input` group, and apply the change by rebooting or running `udevadm control --reload-rules && udevadm trigger`.
 
-### 2. Run the application
+### 2. Get the application
 
-1. Clone the repository
-2. Enter the dev shell with `nix develop`
-   - Skip this step if you're not using Nix
-   - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
-3. Fetch dependencies with `uv sync`
-4. Run it with `uv run poe app`
-5. You're good to go if an icon shows up in the system tray
+Pick whichever fits you:
+
+- Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it
+- If you use Nix flakes: `nix run github:huequica/buds-watcher`, or add this repo as a flake input and reference `packages.<system>.default`
+- Clone the repository and run it from source:
+  1. Enter the dev shell with `nix develop`
+     - Skip this step if you're not using Nix
+     - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
+  2. Fetch dependencies with `uv sync`
+  3. Run it with `uv run poe app`
+
+You're good to go if an icon shows up in the system tray.
 
 ### Ubuntu and other GNOME environments
 
