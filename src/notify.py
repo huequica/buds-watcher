@@ -1,24 +1,24 @@
-"""
-OS標準の通知センターを使わない、独自の常時最前面オーバーレイ通知。
-
-狙い:
-  - Windowsの通知(アクションセンター)は全画面ゲーム中に隠れることがあるため使わない
-  - 自前のフレームレス・常時最前面ウィンドウを画面隅に出す
-
-既知の制約(正直に書いておく):
-  - Windowsの「排他的フルスクリーン」モードのゲームの上には、OSレベルの制約により
-    通常のトップモストウィンドウでは表示されないことがある
-    (多くの現代のゲームは「ボーダレス/フルスクリーン最適化」で動くため、その場合は問題なく表示される)
-  - Linux/WaylandのKDEでは、通常のQt「常に最前面」フラグだけだと
-    コンポジタの設定によって挙動が変わることがある。X11セッションなら安定して動作する。
-    より強固にしたい場合は将来的に layer-shell 系の統合を検討する。
-"""
-
 from __future__ import annotations
+
+import logging
+import os
+from typing import Protocol
 
 from PySide6.QtCore import Property, QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
+
+
+class Overlay(Protocol):
+    def show_message(self, title: str, message: str, accent: QColor) -> None: ...
+    def set_monitor(self, name: str | None) -> None: ...
+
+
+logger = logging.getLogger(__name__)
+
+# OverlayNotification / LayerShellOverlayNotification のどちらからも参照する共有定数。
+ACCENT_DISCONNECTED = QColor(220, 60, 60)
+ACCENT_CONNECTED = QColor(70, 190, 120)
 
 
 class OverlayNotification(QWidget):
@@ -28,8 +28,8 @@ class OverlayNotification(QWidget):
     HEIGHT = 84
     MARGIN = 24
 
-    ACCENT_DISCONNECTED = QColor(220, 60, 60)
-    ACCENT_CONNECTED = QColor(70, 190, 120)
+    ACCENT_DISCONNECTED = ACCENT_DISCONNECTED
+    ACCENT_CONNECTED = ACCENT_CONNECTED
 
     def __init__(self) -> None:
         super().__init__(
@@ -45,6 +45,7 @@ class OverlayNotification(QWidget):
         self._title = ""
         self._message = ""
         self._accent = self.ACCENT_DISCONNECTED
+        self._monitor_name: str | None = None
         # Waylandではウィンドウ単位のopacity(setWindowOpacity)がQtのプラットフォーム
         # プラグインでサポートされていないため、フェードはウィンドウ透明度ではなく
         # 描画内容のアルファ値で自前で行う。
@@ -65,10 +66,13 @@ class OverlayNotification(QWidget):
 
     contentOpacity = Property(float, _get_content_opacity, _set_content_opacity)
 
-    def show_message(self, title: str, message: str, accent: QColor | None = None) -> None:
+    def set_monitor(self, name: str | None) -> None:
+        self._monitor_name = name
+
+    def show_message(self, title: str, message: str, accent: QColor) -> None:
         self._title = title
         self._message = message
-        self._accent = accent if accent is not None else self.ACCENT_DISCONNECTED
+        self._accent = accent
         self._move_to_corner()
         self.contentOpacity = 0.0
         self.show()
@@ -96,7 +100,7 @@ class OverlayNotification(QWidget):
             self.hide()
 
     def _move_to_corner(self) -> None:
-        screen = QApplication.primaryScreen()
+        screen = self._target_screen()
         geo = screen.availableGeometry() if screen else None
         if geo is None:
             self.move(QPoint(100, 100))
@@ -104,6 +108,13 @@ class OverlayNotification(QWidget):
         x = geo.right() - self.WIDTH - self.MARGIN
         y = geo.top() + self.MARGIN
         self.move(QPoint(x, y))
+
+    def _target_screen(self):
+        if self._monitor_name:
+            for screen in QApplication.screens():
+                if screen.name() == self._monitor_name:
+                    return screen
+        return QApplication.primaryScreen()
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt override)
         painter = QPainter(self)
@@ -135,3 +146,28 @@ class OverlayNotification(QWidget):
         line_height = 18
         for i, line in enumerate(self._message.split("\n")):
             painter.drawText(24, 56 + i * line_height, line)
+
+
+def create_overlay_notification(monitor_name: str | None = None) -> Overlay:
+    """
+    Wayland + layer-shell-qt (org.kde.layershell) が使える環境ではそちらで
+    画面端に正しく固定表示し、使えない環境(X11、Windows、layer-shell-qt
+    未インストールのWayland環境など)では通常のQtWidgetsオーバーレイに
+    フォールバックする。
+    """
+    overlay: Overlay
+    if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":
+        try:
+            from notify_layershell import LayerShellOverlayNotification
+
+            overlay = LayerShellOverlayNotification()
+        except Exception:
+            logger.exception(
+                "layer-shell overlay unavailable, falling back to the QtWidgets overlay"
+            )
+            overlay = OverlayNotification()
+    else:
+        overlay = OverlayNotification()
+
+    overlay.set_monitor(monitor_name)
+    return overlay

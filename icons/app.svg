@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="buds-watcher icon">
+  <defs>
+    <radialGradient id="bg-grad" cx="32%" cy="22%" r="90%">
+      <stop offset="0%" stop-color="#25505f" />
+      <stop offset="100%" stop-color="#12262e" />
+    </radialGradient>
+    <symbol id="flying-bud" viewBox="-48 -34 96 68">
+      <path d="M 0,-4 Q -22,-26 -44,-17 Q -24,-8 0,4 Z" fill="#f4eee2" />
+      <path d="M 0,-4 Q 22,-26 44,-17 Q 24,-8 0,4 Z" fill="#f4eee2" />
+      <path d="M -37,-11 L -44,-17 L -34,-15 Z" fill="#2c454e" />
+      <path d="M -29,-8 L -36,-12 L -27,-11 Z" fill="#2c454e" />
+      <path d="M 37,-11 L 44,-17 L 34,-15 Z" fill="#2c454e" />
+      <path d="M 29,-8 L 36,-12 L 27,-11 Z" fill="#2c454e" />
+      <g stroke="#cfc4ae" stroke-width="1.6" stroke-linecap="round" opacity="0.7">
+        <path d="M -30,-15 L -39,-19" />
+        <path d="M -23,-10 L -31,-14" />
+        <path d="M 30,-15 L 39,-19" />
+        <path d="M 23,-10 L 31,-14" />
+      </g>
+      <ellipse cx="0" cy="3" rx="9" ry="5.5" fill="#f4eee2" />
+      <circle cx="6" cy="-6" r="6.5" fill="#f4eee2" />
+      <circle cx="8.4" cy="-7" r="1.3" fill="#2c454e" />
+      <path d="M 11,-7 L 19,-4.5 L 11,-2 Z" fill="#e8935f" />
+      <path d="M -5,7 L -14,15 M 1,8 L -3,17" fill="none" stroke="#f4eee2" stroke-width="3" stroke-linecap="round" />
+    </symbol>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#bg-grad)" />
+
+  <ellipse cx="248" cy="420" rx="150" ry="30" fill="#0a181d" opacity="0.35" />
+
+  <g opacity="0.4">
+    <use href="#flying-bud" width="96" height="68" x="-48" y="-34"
+         transform="translate(406,290) rotate(12) scale(0.4,-0.4)" />
+  </g>
+
+  <g transform="translate(304,224) rotate(16) scale(3.45,3.45)">
+    <use href="#flying-bud" width="96" height="68" x="-48" y="-34" />
+  </g>
+  <g transform="translate(178,346) rotate(20) scale(2.4,2.4)">
+    <use href="#flying-bud" width="96" height="68" x="-48" y="-34" />
+  </g>
+  <g opacity="0.4" stroke="#f4eee2" stroke-width="7" stroke-linecap="round">
+    <path d="M 92 404 L 126 386" />
+    <path d="M 80 428 L 118 410" />
+  </g>
+</svg>

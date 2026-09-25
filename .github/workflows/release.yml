@@ -1,4 +1,4 @@
-name: Build Windows exe and release
+name: Build binaries and release
 
 on:
   push:
@@ -8,8 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
@@ -17,10 +19,14 @@ jobs:
       # リリースするバージョンは、masterへのPRを作る際にpyproject.tomlで上げておくこと。
       - name: Read version from pyproject.toml
         id: version
-        shell: bash
         run: |
           VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v10.1.0
         with:
@@ -30,13 +36,47 @@ jobs:
 
       - run: uv run poe build
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: buds-watcher-windows
+          path: dist/buds-watcher.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      - run: uv sync --no-default-groups --group build
+
+      - run: uv run poe build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: buds-watcher-linux
+          path: dist/buds-watcher
+
+  release:
+    needs: [version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist-artifacts
+
       - uses: softprops/action-gh-release@v3.0.3
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
           make_latest: true
           generate_release_notes: true
           body: |
             > [!WARNING]
-            > exe に関しては署名していないので初回起動時に Windows Defender SmartScreen の警告が出る場合があります
-          files: dist/buds-watcher.exe
+            > Windows exe は署名していないので初回起動時に Windows Defender SmartScreen の警告が出る場合があります
+            > Linux バイナリはダウンロード後に `chmod +x buds-watcher` で実行権限を付けてください
+          files: |
+            dist-artifacts/buds-watcher-windows/buds-watcher.exe
+            dist-artifacts/buds-watcher-linux/buds-watcher

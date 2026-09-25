@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=buds-watcher
+Comment=Sony INZONE Buds 左右切断検知アプリ
+Exec=buds-watcher
+Icon=buds-watcher
+Terminal=false
+Categories=Utility;
+StartupWMClass=buds-watcher

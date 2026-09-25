@@ -2,6 +2,8 @@
 
 このプロジェクトではすべての開発段階のコードの最新を `develop` ブランチに集約しています。  
 Issue の解決、細かいリファクタなどリリース時以外で既存のコードに対して変更をいれる際は必ず `develop` からブランチを切り、向き先を `develop` に向けた PR を出してください。  
+ブランチ名は `write_what_do_this_branch#ISSUE_NUMBER` の形式(そのブランチで何をするかを表す短い説明 + `#` + 対象Issue番号)で切ってください。  
+例: `create_app_icon#22`  
 PR のタイトルは簡潔にまとめ、説明文に関連 Issue などをまとめるようにしてください。  
 具体的な内容は `.github/pull_request_template.md` に準拠してください。
 

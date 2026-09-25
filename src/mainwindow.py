@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+from appinfo import APP_NAME, ICON_PNG_PATH
 
 
 class MainWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("INZONE Buds Monitor")
+        self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(QIcon(str(ICON_PNG_PATH)))
         self.resize(320, 160)
 
         self._left_ok = True
@@ -56,6 +60,5 @@ class MainWindow(QWidget):
         return f"{side}: {status}"
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        # ウィンドウを閉じてもアプリ自体は常駐し続ける(トレイに残る)
         event.ignore()
         self.hide()

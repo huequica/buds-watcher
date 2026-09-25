@@ -2,19 +2,24 @@ from __future__ import annotations
 
 import sys
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 
+from appinfo import ICON_PNG_PATH
 from applog import setup_logging
 from device import DeviceMonitor
 from mainwindow import MainWindow
-from notify import OverlayNotification
+from notify import ACCENT_CONNECTED, ACCENT_DISCONNECTED, create_overlay_notification
+from settings import Settings
 from tray import TrayIcon
 
 
 def main() -> int:
-    setup_logging()
+    settings = Settings.load()
+    setup_logging(settings.dump_log_file)
     app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)  # ウィンドウを閉じても常駐を続ける
+    app.setQuitOnLastWindowClosed(False)
+    app.setWindowIcon(QIcon(str(ICON_PNG_PATH)))
 
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.warning(
@@ -27,28 +32,34 @@ def main() -> int:
 
     window = MainWindow()
     device = DeviceMonitor()
-    notification = OverlayNotification()
+    notification = create_overlay_notification(settings.monitor_name)
 
-    tray = TrayIcon(main_window=window, device_monitor=device)
+    tray = TrayIcon(
+        main_window=window, device_monitor=device, settings=settings, notification=notification
+    )
     tray.show()
 
     def on_left_disconnected() -> None:
-        notification.show_message("INZONE Buds", "左のイヤホンが切断されました")
+        notification.show_message(
+            "INZONE Buds", "左のイヤホンが切断されました", ACCENT_DISCONNECTED
+        )
 
     def on_right_disconnected() -> None:
-        notification.show_message("INZONE Buds", "右のイヤホンが切断されました")
+        notification.show_message(
+            "INZONE Buds", "右のイヤホンが切断されました", ACCENT_DISCONNECTED
+        )
 
     def on_left_connected() -> None:
         message = "左のイヤホンが接続されました"
         if device.left_battery is not None:
             message += f"\nバッテリー {device.left_battery}%"
-        notification.show_message("INZONE Buds", message, OverlayNotification.ACCENT_CONNECTED)
+        notification.show_message("INZONE Buds", message, ACCENT_CONNECTED)
 
     def on_right_connected() -> None:
         message = "右のイヤホンが接続されました"
         if device.right_battery is not None:
             message += f"\nバッテリー {device.right_battery}%"
-        notification.show_message("INZONE Buds", message, OverlayNotification.ACCENT_CONNECTED)
+        notification.show_message("INZONE Buds", message, ACCENT_CONNECTED)
 
     device.left_disconnected.connect(on_left_disconnected)
     device.right_disconnected.connect(on_right_disconnected)

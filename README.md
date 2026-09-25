@@ -1,106 +1,132 @@
-# INZONE Buds Monitor (v0.1 スケルトン)
+<p align="center">
+  <img src="./icons/app.png" width="128" height="128" alt="buds-watcher icon">
+</p>
 
-Sony INZONE Buds の左右イヤホンの切断を検知し、OS標準の通知を使わずに
-常時最前面のオーバーレイでプッシュ通知するための常駐アプリです。
+# buds-watcher
 
-## 現状でできること
+[日本語の README はこちら](./README_ja.md)
 
-- システムトレイに常駐し、右クリックで以下を選べる
-  - 「アプリケーション画面を開く」
-  - 「アプリを終了する」
-- USBレシーバー(VID 0x054c / PID 0x0ec2)のHIDレポートをイベント駆動で監視し、
-  左右どちらかが切断/再接続されると画面にオーバーレイ通知が出る(OS標準通知は不使用)
-- トレイアイコンの色でL/Rの状態を表示(緑=OK / 赤=切断)
+An app that notifies you on screen when your Sony INZONE Buds earbuds disconnect or reconnect.
 
-実プロトコルの解析結果は `src/device.py` のコメントと `HANDOFF.md` を参照。
+# Features
 
-## セットアップ
+- Notifies you on screen when an earbud disconnects or connects
+  - Doesn't use the OS's built-in notification system, so it stays on top and is visible even during games
+  - Battery level is shown in the notification when an earbud connects
+- Check the current battery level anytime from the main window
+- Windows/Linux support
+  - macOS isn't supported at this time
+  - Setup is required to use it on Linux (see below)
 
-Nix (flakes) を使う場合:
+# Usage
 
-```bash
-nix develop
-uv sync
-uv run poe app
-```
+## Windows
 
-[direnv](https://direnv.net/) を使っていれば `.envrc`(`use flake`)により
-ディレクトリに入るだけで自動的に devShell に入る。
+1. Download the latest `buds-watcher.exe` from [Releases](https://github.com/huequica/buds-watcher/releases)
+2. Run `buds-watcher.exe`
+3. You're good to go if an icon shows up in the system tray
 
-Nixを使わない場合は [uv](https://docs.astral.sh/uv/) を直接インストールして:
+## Linux
 
-```bash
-uv sync
-uv run poe app
-```
+It also needs to access the device via `libusb`, so read/write permission on `/dev/bus/usb/*/*` is required.
 
-### タスク一覧
+### 1. Set up USB read/write permissions
 
-uv自体にはnpmの`package.json`の`scripts`に相当する機能は無いため、
-[Poe the Poet](https://poethepoet.natn.io/) で代用している(`pyproject.toml`の
-`[tool.poe.tasks]`)。`uv run poe <タスク名>`で実行する:
-
-| タスク | 内容 |
-| --- | --- |
-| `app` | アプリを起動する |
-| `lint` | `ruff check .` |
-| `format` | `ruff format .` |
-| `format-check` | `ruff format --check .`(CIと同じ) |
-| `check` | `lint` + `format-check` |
-
-### Linuxでの追加設定(USBデバイスへのアクセス権限)
-
-`src/device.py` は `hidapi` パッケージ経由でレシーバーにアクセスする。Linux上の
-`hidapi` はhidraw経由ではなく **libusb** 経由でアクセスするため、`/dev/hidraw*`
-ではなく `/dev/bus/usb/*/*` への読み書き権限が必要。root以外のユーザーでも
-アクセスできるよう udev ルールが必要。例:
+Create the following file:
 
 ```
 # /etc/udev/rules.d/99-inzone-buds.rules
 SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ec2", MODE="0660", GROUP="input"
 ```
 
-ユーザーを `input` グループに追加し、ルールを反映(`udevadm control --reload-rules && udevadm trigger`、
-または再ログイン/再起動)すること。
+Then add your user to the `input` group, and apply the change by rebooting or running `udevadm control --reload-rules && udevadm trigger`.
 
-### GNOMEを使っている場合の注意
+### 2. Get the application
 
-GNOMEは標準でシステムトレイ機能を廃止しているため、このままだとトレイアイコンが
-表示されません。GNOME Extensions から
-**"AppIndicator and KStatusNotifierItem Support"** を入れてください。
-KDE Plasma はこの対応が標準で入っているので追加設定は不要です。
+Pick whichever fits you.
 
-### オーバーレイ通知の既知の制約(正直な注意点)
+#### From GitHub Releases
 
-- Windowsで「排他的フルスクリーン」で動くゲーム(まれに存在)には、OS側の制約で
-  重ねて表示できない場合があります。多くの現代のゲームはボーダレス/フルスクリーン
-  最適化で動くため、その場合は問題なく表示されます。
-- **Linux/Wayland**: 通知の表示・フェード自体は動作するが、**画面上の位置を
-  指定通り(右上)に固定できない**。Waylandはセキュリティ上の理由でクライアントが
-  ウィンドウの絶対位置を指定することを許可しておらず、コンポジタ(KWin等)が
-  決めたデフォルト位置(多くは画面中央)に表示される。正しく右上に固定するには
-  `wlr-layer-shell` プロトコル(KDEなら `layer-shell-qt`)への対応が必要だが、
-  PySide6用の公式バインディングが無いため未対応。**X11セッションでは正しく
-  右上に固定表示される**ため、位置を重視する場合はX11セッションの使用を推奨する。
+Download the latest `buds-watcher` binary from [Releases](https://github.com/huequica/buds-watcher/releases), run `chmod +x buds-watcher`, then run it.
 
-## Windows用実行ファイル
+#### If you use Nix flakes
 
-Python環境を用意せずに使いたい場合向けに、[PyInstaller](https://pyinstaller.org/)で
-単一exeにまとめられる。`master`にpushすると GitHub Actions
-(`.github/workflows/release.yml`)がWindows上で自動ビルドし、[Releases](../../releases)に
-`pyproject.toml`の`version`(`v0.1.0`のような形式)をタグ名として`buds-watcher.exe`を
-アップロードする。リリースするバージョンは、masterへのPRを作る際に`pyproject.toml`の
-`version`を上げておくこと(上げ忘れて同じバージョンでpushすると、既存リリースが上書きされる)。
+Run it directly without installing:
 
-手元でビルドする場合(Windows上で):
-
-```bash
-uv sync --group build
-uv run poe build
+```sh
+nix run github:huequica/buds-watcher
 ```
 
-`dist/buds-watcher.exe` が生成される。署名していないため、初回起動時にWindows Defender
-SmartScreenの警告が出る場合がある。
+Install it into your profile:
 
-Windows実機での動作確認はまだ行っていない(hidrawの代わりにhidapiのWindowsバックエンドを
-使う想定だが、権限やドライバの問題が出る可能性がある)。
+```sh
+nix profile install github:huequica/buds-watcher
+```
+
+Add it as an input to your own flake and reference `packages.<system>.default`, e.g. in a NixOS config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, buds-watcher, ... }: {
+    # e.g. in configuration.nix
+    environment.systemPackages = [ buds-watcher.packages.x86_64-linux.default ];
+  };
+}
+```
+
+or in a home-manager config:
+
+```nix
+{
+  inputs.buds-watcher.url = "github:huequica/buds-watcher";
+
+  outputs = { nixpkgs, home-manager, buds-watcher, ... }: {
+    homeConfigurations.<username> = home-manager.lib.homeManagerConfiguration {
+      # ... (pkgs, system, etc.)
+      modules = [
+        {
+          home.packages = [ buds-watcher.packages.x86_64-linux.default ];
+        }
+      ];
+    };
+  };
+}
+```
+
+#### From source
+
+1. Clone the repository
+2. Enter the dev shell with `nix develop`
+   - Skip this step if you're not using Nix
+   - If you also use direnv, `direnv allow` will drop you into the dev shell automatically
+3. Fetch dependencies with `uv sync`
+4. Run it with `uv run poe app`
+
+You're good to go if an icon shows up in the system tray.
+
+### Desktop entry (optional)
+
+Installing via the flake (`nix profile install` or as a system/home-manager package) already registers buds-watcher with your app launcher.  
+If you downloaded the binary from Releases instead, you can register it yourself: put the binary somewhere on your `PATH` (e.g. `~/.local/bin/buds-watcher`), then copy [`buds-watcher.desktop`](./buds-watcher.desktop) to `~/.local/share/applications/` and the icon to `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png` (from [`icons/app.png`](./icons/app.png)).
+
+### Ubuntu and other GNOME environments
+
+GNOME removed the system tray feature by default, so the icon won't show up as-is.  
+Install **"AppIndicator and KStatusNotifierItem Support"** from GNOME Extensions.
+
+### Wayland environments
+
+On compositors that support the `wlr-layer-shell` protocol with KDE's `layer-shell-qt` installed (e.g. KDE Plasma), the notification is anchored to the top-right corner correctly, same as under X11.  
+On other Wayland compositors (e.g. GNOME) or environments without `layer-shell-qt`, it falls back to showing the notification in the center of the screen - this isn't a bug, it's how it's designed to work.
+
+<details>
+
+<summary>Why does this happen?</summary>
+
+Wayland doesn't let clients specify a window's absolute position, for security reasons, so a plain window ends up
+at whatever default position the compositor (e.g. KWin) chooses - usually the center of the screen.  
+Placing it correctly in the top-right corner requires support for the `wlr-layer-shell` protocol. There's no official PySide6 binding for it, but KDE's `layer-shell-qt` project ships an official QML module (`org.kde.layershell`), so buds-watcher uses a QML-based overlay through that module when it's available, and falls back to the plain widget overlay otherwise.
+
+</details>

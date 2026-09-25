@@ -1,18 +1,13 @@
-"""
-システムトレイアイコンとその右クリックメニュー。
-
-注意:
-  - GNOME (標準設定) はシステムトレイ自体を廃止しているため、
-    "AppIndicator and KStatusNotifierItem Support" 等の拡張機能を
-    入れないとアイコンが表示されない。README にその旨を記載する。
-  - KDE Plasma はKStatusNotifierItemを標準でサポートしているため問題なく動く。
-"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+
+import applog
+from appinfo import APP_NAME
+from settings import Settings
+from settingsdialog import SettingsDialog
 
 
 def make_status_icon(left_ok: bool, right_ok: bool) -> QIcon:
@@ -40,19 +35,27 @@ def make_status_icon(left_ok: bool, right_ok: bool) -> QIcon:
 
 
 class TrayIcon(QSystemTrayIcon):
-    def __init__(self, main_window, device_monitor, parent=None) -> None:
+    def __init__(
+        self, main_window, device_monitor, settings: Settings, notification, parent=None
+    ) -> None:
         super().__init__(parent)
         self._main_window = main_window
         self._device = device_monitor
+        self._settings = settings
+        self._notification = notification
 
         self.setIcon(make_status_icon(True, True))
-        self.setToolTip("INZONE Buds Monitor")
+        self.setToolTip(APP_NAME)
 
         menu = QMenu()
 
         open_action = QAction("アプリケーション画面を開く", menu)
         open_action.triggered.connect(self._open_window)
         menu.addAction(open_action)
+
+        settings_action = QAction("設定を開く", menu)
+        settings_action.triggered.connect(self._open_settings)
+        menu.addAction(settings_action)
 
         menu.addSeparator()
 
@@ -74,6 +77,15 @@ class TrayIcon(QSystemTrayIcon):
         self._main_window.show()
         self._main_window.raise_()
         self._main_window.activateWindow()
+
+    def _open_settings(self) -> None:
+        dialog = SettingsDialog(self._settings, self._main_window)
+        if dialog.exec() != SettingsDialog.DialogCode.Accepted:
+            return
+        self._settings = dialog.result_settings()
+        self._settings.save()
+        applog.setup_logging(self._settings.dump_log_file)
+        self._notification.set_monitor(self._settings.monitor_name)
 
     def _on_status_changed(self, left_ok: bool, right_ok: bool) -> None:
         self.setIcon(make_status_icon(left_ok, right_ok))
