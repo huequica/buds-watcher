@@ -39,6 +39,9 @@
         pkgs.libxshmfence
         pkgs.libxcursor
         pkgs.libxtst
+        # QtQml/QtQuick(layer-shell-qtのQMLプラグインを使うのに必要)が推移的に要求するもの
+        pkgs.krb5.lib
+        pkgs.brotli.lib
       ];
     in
     {
@@ -58,6 +61,9 @@
 
         shellHook = ''
           export LD_LIBRARY_PATH="${runtimeLibs}:$LD_LIBRARY_PATH"
+          # WaylandでのオーバーレイをlayerShellQtのQMLモジュール
+          # (org.kde.layershell)で固定表示するために必要(notify_layershell.py)。
+          export QML2_IMPORT_PATH="${pkgs.kdePackages.layer-shell-qt}/lib/qt-6/qml:$QML2_IMPORT_PATH"
         '';
       };
     };

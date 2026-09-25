@@ -60,15 +60,15 @@ Install **"AppIndicator and KStatusNotifierItem Support"** from GNOME Extensions
 
 ### Wayland environments
 
-Running under Wayland currently shows the notification in the center of the screen - this isn't abug, it's how it's designed to work.  
-It shows up correctly in the top-right corner under X11, so if that really bothers you, run it under X11 instead.
+On compositors that support the `wlr-layer-shell` protocol with KDE's `layer-shell-qt` installed (e.g. KDE Plasma), the notification is anchored to the top-right corner correctly, same as under X11.  
+On other Wayland compositors (e.g. GNOME) or environments without `layer-shell-qt`, it falls back to showing the notification in the center of the screen - this isn't a bug, it's how it's designed to work.
 
 <details>
 
 <summary>Why does this happen?</summary>
 
-Wayland doesn't let clients specify a window's absolute position, for security reasons, so it ends up
+Wayland doesn't let clients specify a window's absolute position, for security reasons, so a plain window ends up
 at whatever default position the compositor (e.g. KWin) chooses - usually the center of the screen.  
-Placing it correctly in the top-right corner would require support for the `wlr-layer-shell` protocol(`layer-shell-qt` on KDE), but there's no official PySide6 binding for it, so this isn't supported yet.
+Placing it correctly in the top-right corner requires support for the `wlr-layer-shell` protocol. There's no official PySide6 binding for it, but KDE's `layer-shell-qt` project ships an official QML module (`org.kde.layershell`), so buds-watcher uses a QML-based overlay through that module when it's available, and falls back to the plain widget overlay otherwise.
 
 </details>

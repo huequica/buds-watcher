@@ -33,4 +33,4 @@ lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
 check = ["lint", "format-check"]
-build = "pyinstaller --onefile --windowed --name buds-watcher --collect-all hid --exclude-module PySide6.QtNetwork --add-data pyproject.toml:. --add-data icons/app.png:icons --icon icons/app.ico src/main.py"
+build = "pyinstaller --onefile --windowed --name buds-watcher --collect-all hid --exclude-module PySide6.QtNetwork --exclude-module PySide6.QtQml --exclude-module PySide6.QtQuick --add-data pyproject.toml:. --add-data icons/app.png:icons --icon icons/app.ico src/main.py"

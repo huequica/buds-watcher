@@ -57,14 +57,14 @@ GNOME Extensions から **"AppIndicator and KStatusNotifierItem Support"** を�
 
 ### Wayland 環境
 
-現状 Wayland 環境で動かす場合は通知が画面中央に表示されますがバグではなく仕様です  
-X11 環境では正しく右上に出ますのでどうしても気になりすぎて発狂しそうな方は X11 で動かしてください
+`wlr-layer-shell` プロトコルに対応していて KDE の `layer-shell-qt` がインストールされている環境(KDE Plasma など)では、X11 と同様に通知が正しく右上に固定表示されます  
+それ以外の Wayland コンポジタ(GNOME など)や `layer-shell-qt` が無い環境では通知が画面中央に表示されますがバグではなく仕様です
 
 <details>
 
 <summary>なんでこんなことになっているか</summary>
 
-Wayland はセキュリティ上の理由でクライアントがウィンドウの絶対位置を指定することを許可しておらずコンポジタ(KWin など)が決めたデフォルト位置、たいてい画面中央に表示されます  
-正しく右上に固定するには `wlr-layer-shell` プロトコル(KDE では`layer-shell-qt`)への対応が必要だけど PySide6 用の公式バインディングが無いため未対応となっています
+Wayland はセキュリティ上の理由でクライアントがウィンドウの絶対位置を指定することを許可しておらず、通常のウィンドウはコンポジタ(KWin など)が決めたデフォルト位置、たいてい画面中央に表示されます  
+正しく右上に固定するには `wlr-layer-shell` プロトコルへの対応が必要で、PySide6 用の公式バインディングはありませんが、KDE の `layer-shell-qt` プロジェクトが公式 QML モジュール(`org.kde.layershell`)を提供しているため、buds-watcher はそれが使える環境では QML ベースのオーバーレイを使い、使えない環境では従来のウィジェット版オーバーレイにフォールバックします
 
 </details>
