@@ -107,7 +107,8 @@ home-manager の設定であれば
 ### デスクトップエントリ(任意)
 
 flake経由(`nix profile install` やNixOS/home-managerのパッケージとして)でインストールした場合は、アプリランチャーへの登録も自動で行われます  
-Releases からバイナリをダウンロードした場合は自分で登録できます。バイナリを `PATH` の通った場所(例: `~/.local/bin/buds-watcher`)に置いた上で、[`buds-watcher.desktop`](./buds-watcher.desktop) を `~/.local/share/applications/` に、アイコンを `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png`([`icons/app.png`](./icons/app.png) から)にコピーしてください
+Releases からバイナリをダウンロードした場合は自分で登録できます  
+バイナリを `PATH` の通った場所(例: `~/.local/bin/buds-watcher`)に置いた上で [`buds-watcher.desktop`](./buds-watcher.desktop) を `~/.local/share/applications/` に、アイコンを `~/.local/share/icons/hicolor/256x256/apps/buds-watcher.png`([`icons/app.png`](./icons/app.png) から)にコピーしてください
 
 ### Ubuntu などの GNOME 環境
 
