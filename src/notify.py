@@ -45,7 +45,6 @@ class OverlayNotification(QWidget):
         self._title = ""
         self._message = ""
         self._accent = self.ACCENT_DISCONNECTED
-        # Noneなら自動(primaryScreen())。設定で特定モニターが選ばれた場合はその名前。
         self._monitor_name: str | None = None
         # Waylandではウィンドウ単位のopacity(setWindowOpacity)がQtのプラットフォーム
         # プラグインでサポートされていないため、フェードはウィンドウ透明度ではなく
@@ -155,9 +154,6 @@ def create_overlay_notification(monitor_name: str | None = None) -> Overlay:
     画面端に正しく固定表示し、使えない環境(X11、Windows、layer-shell-qt
     未インストールのWayland環境など)では通常のQtWidgetsオーバーレイに
     フォールバックする。
-
-    monitor_name is Noneなら自動(Wayland側はアクティブなモニター、それ以外は
-    primaryScreen())。指定時はQScreen.name()と一致するモニターに表示する。
     """
     overlay: Overlay
     if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":

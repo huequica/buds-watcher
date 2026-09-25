@@ -33,9 +33,6 @@ class LayerShellOverlayNotification:
         self._seq = 0
 
     def set_monitor(self, name: str | None) -> None:
-        # Noneなら wantsToBeOnActiveScreen による自動選択(実機検証済み)。
-        # 指定時はその名前のQScreenを明示的に指定する(layer-shell-qt側の
-        # 挙動次第で反映されないコンポジタもありうるためベストエフォート)。
         screen = None
         if name:
             screen = next((s for s in QGuiApplication.screens() if s.name() == name), None)

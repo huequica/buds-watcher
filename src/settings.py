@@ -12,14 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 def settings_file_path() -> Path:
-    # ログファイルと同じ場所に置く(frozen時はexeの隣、開発時はリポジトリ直下)。
     return log_file_path().parent / "buds-watcher.yaml"
 
 
 @dataclass
 class Settings:
     dump_log_file: bool = True
-    # Noneなら自動(アクティブなモニターに表示)。指定時はQScreen.name()の値。
     monitor_name: str | None = None
 
     @classmethod
