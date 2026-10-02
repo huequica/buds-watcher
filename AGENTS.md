@@ -27,7 +27,7 @@ PRの向き先は `develop` でOKです。
 
 ## 2. master に向けて PR を発行
 
-`master` ブランチに向けて PR を発行してください。  
+`master` からブランチを切り、 `develop` の変更を merge してそのまま `master` に向けて PR を発行してください。  
 この際タイトルは原則として `RELEASE v0.0.3` のようなタイトルで発行してください。  
 その後 PR が merge されれば自動的に GitHub Actions がリリースを発行します。  
 詳細は `.github/workflows/release.yml` を確認してください。
