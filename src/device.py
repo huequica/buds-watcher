@@ -57,9 +57,23 @@ MIN_BATTERY_REPORT_LEN = 17
 # 伝える(不明なままそのサイドの値だけ無視し、既知の値を保持し続ける)。
 BATTERY_UNKNOWN = -1
 
+# INZONE Hub起動時のキャプチャ解析で判明したバッテリー残量の問い合わせ。
+# Output Report(ID 2)で送ると、上記のバッテリーレポートが返ってくる。
+# 形式: [ID, 後続長, 01, 00, fc, ペイロード長] + ペイロード
+# ペイロード末尾のバイトは、それより前のペイロードの合計の下位8bit(チェックサム)。
+OUTPUT_REPORT_ID = 0x02
+OUTPUT_REPORT_LEN = 64
+BATTERY_REQUEST_PAYLOAD = (0x96, 0xC3, 0x41, 0x04, 0x01, 0x01, 0x00)
+
 
 def _normalize_battery_percent(raw: int) -> int:
     return raw if 0 <= raw <= 100 else BATTERY_UNKNOWN
+
+
+def _build_battery_request() -> list[int]:
+    payload = [*BATTERY_REQUEST_PAYLOAD, sum(BATTERY_REQUEST_PAYLOAD) & 0xFF]
+    report = [OUTPUT_REPORT_ID, len(payload) + 4, 0x01, 0x00, 0xFC, len(payload), *payload]
+    return report + [0x00] * (OUTPUT_REPORT_LEN - len(report))
 
 
 READ_TIMEOUT_MS = 1000
@@ -128,6 +142,7 @@ class _ReceiverReaderThread(QThread):
                 continue
 
             logger.info("opened HID path %r", self._path)
+            self._request_battery(device)
             try:
                 got_data = self._read_loop(device)
             finally:
@@ -153,6 +168,22 @@ class _ReceiverReaderThread(QThread):
 
             if not self._stop_requested:
                 self.msleep(RECONNECT_DELAY_MS)
+
+    def _request_battery(self, device: "hid_types.device") -> None:
+        """バッテリー残量の問い合わせを送る。応答は_read_loopで受け取る。
+
+        WindowsではOutput Reportを受け付けるHIDコレクションが1つ(usage_page 0xFF04)
+        だけで、それ以外のパスへの書き込みは失敗する。どのパスが受け付けるかは
+        OSによって異なるため、全パスで試して失敗は無視する。
+        """
+        try:
+            written = device.write(_build_battery_request())
+        except Exception:
+            written = -1
+        if written < 0:
+            logger.debug("battery request not accepted on HID path %r", self._path)
+        else:
+            logger.info("sent battery request on HID path %r", self._path)
 
     def _read_loop(self, device: "hid_types.device") -> bool:
         """状態レポート(不一致含む)を一度でも読めたら True を返す。"""
