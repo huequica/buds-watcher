@@ -17,6 +17,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickWindow, QSGRendererInterface
 
 _QML_PATH = Path(__file__).resolve().parent / "qml" / "overlay_notification.qml"
 
@@ -25,6 +26,9 @@ class LayerShellOverlayNotification:
     """notify.OverlayNotification と同じインターフェースを持つlayer-shell版。"""
 
     def __init__(self) -> None:
+        # 角丸矩形とテキストだけの通知なので、softwareレンダラーにしてGLへの依存自体をなくす
+        # NixOS でシステムの Mesa と flake.lock の glibc のバージョン食い違いで qFatal が起きる対処
+        QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.Software)
         self._engine = QQmlApplicationEngine()
         self._engine.load(str(_QML_PATH))
         if not self._engine.rootObjects():
