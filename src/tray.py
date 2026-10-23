@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 import applog
 from appinfo import APP_NAME
+from notify import ACCENT_WARNING
 from settings import Settings
 from settingsdialog import SettingsDialog
 
@@ -34,6 +35,22 @@ def make_status_icon(left_ok: bool, right_ok: bool) -> QIcon:
     return QIcon(pixmap)
 
 
+def make_receiver_missing_icon() -> QIcon:
+    """レシーバー(ドングル)が刺さっていないことを示す黄色一色のアイコンを生成する。"""
+    size = 64
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(ACCENT_WARNING)
+    painter.drawEllipse(4, 4, size - 8, size - 8)
+
+    painter.end()
+    return QIcon(pixmap)
+
+
 class TrayIcon(QSystemTrayIcon):
     def __init__(
         self, main_window, device_monitor, settings: Settings, notification, parent=None
@@ -44,8 +61,11 @@ class TrayIcon(QSystemTrayIcon):
         self._settings = settings
         self._notification = notification
 
-        self.setIcon(make_status_icon(True, True))
-        self.setToolTip(APP_NAME)
+        self._left_ok = True
+        self._right_ok = True
+        self._receiver_present = True
+
+        self._update_icon()
 
         menu = QMenu()
 
@@ -67,6 +87,7 @@ class TrayIcon(QSystemTrayIcon):
         self.activated.connect(self._on_activated)
 
         self._device.status_changed.connect(self._on_status_changed)
+        self._device.receiver_presence_changed.connect(self._on_receiver_presence_changed)
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         # ダブルクリックでも開けるようにしておく(右クリックメニューは別途表示される)
@@ -88,4 +109,18 @@ class TrayIcon(QSystemTrayIcon):
         self._notification.set_monitor(self._settings.monitor_name)
 
     def _on_status_changed(self, left_ok: bool, right_ok: bool) -> None:
-        self.setIcon(make_status_icon(left_ok, right_ok))
+        self._left_ok = left_ok
+        self._right_ok = right_ok
+        self._update_icon()
+
+    def _on_receiver_presence_changed(self, present: bool) -> None:
+        self._receiver_present = present
+        self._update_icon()
+
+    def _update_icon(self) -> None:
+        if not self._receiver_present:
+            self.setIcon(make_receiver_missing_icon())
+            self.setToolTip(f"{APP_NAME}\nドングルが接続されていません")
+            return
+        self.setIcon(make_status_icon(self._left_ok, self._right_ok))
+        self.setToolTip(APP_NAME)

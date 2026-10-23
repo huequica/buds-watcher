@@ -251,12 +251,17 @@ class DeviceMonitor(QObject):
     # バッテリー残量レポートを受信するたびに発火するシグナル
     battery_changed = Signal(int, int)  # (left_battery_percent, right_battery_percent)
 
+    # レシーバー(ドングル)の有無が変化したとき(と起動直後の初回検出時)に発火するシグナル
+    receiver_presence_changed = Signal(bool)  # (receiver_is_present)
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._left_connected = True
         self._right_connected = True
         self.left_battery: int | None = None
         self.right_battery: int | None = None
+        # 起動直後の初回検出結果を必ず通知するため、未判定の間は None にしておく
+        self._receiver_present: bool | None = None
 
         self._readers: dict[bytes, _ReceiverReaderThread] = {}
         self._given_up_paths: set[bytes] = set()
@@ -305,6 +310,7 @@ class DeviceMonitor(QObject):
 
         if not current_paths:
             logger.debug("no receiver path found yet")
+        self._set_receiver_present(bool(current_paths))
 
     def _on_reader_gave_up(self, path: bytes) -> None:
         self._given_up_paths.add(path)
@@ -331,6 +337,13 @@ class DeviceMonitor(QObject):
     # ------------------------------------------------------------------
     # 内部ヘルパー
     # ------------------------------------------------------------------
+    def _set_receiver_present(self, present: bool) -> None:
+        if present == self._receiver_present:
+            return
+        self._receiver_present = present
+        logger.info("receiver %s", "found" if present else "not found")
+        self.receiver_presence_changed.emit(present)
+
     def _set_left(self, connected: bool) -> None:
         if connected == self._left_connected:
             return
