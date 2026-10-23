@@ -9,7 +9,12 @@ from appinfo import ICON_PNG_PATH
 from applog import setup_logging
 from device import DeviceMonitor
 from mainwindow import MainWindow
-from notify import ACCENT_CONNECTED, ACCENT_DISCONNECTED, create_overlay_notification
+from notify import (
+    ACCENT_CONNECTED,
+    ACCENT_DISCONNECTED,
+    ACCENT_WARNING,
+    create_overlay_notification,
+)
 from settings import Settings
 from tray import TrayIcon
 
@@ -61,12 +66,29 @@ def main() -> int:
             message += f"\nバッテリー {device.right_battery}%"
         notification.show_message("INZONE Buds", message, ACCENT_CONNECTED)
 
+    # 起動直後の初回検出でドングルが刺さっていた場合は、通常の状態なので通知しない
+    receiver_checked = False
+
+    def on_receiver_presence_changed(present: bool) -> None:
+        nonlocal receiver_checked
+        first_check = not receiver_checked
+        receiver_checked = True
+        if present:
+            if not first_check:
+                notification.show_message(
+                    "INZONE Buds", "ドングルが接続されました", ACCENT_CONNECTED
+                )
+            return
+        notification.show_message("INZONE Buds", "ドングルが接続されていません", ACCENT_WARNING)
+
+    device.receiver_presence_changed.connect(on_receiver_presence_changed)
     device.left_disconnected.connect(on_left_disconnected)
     device.right_disconnected.connect(on_right_disconnected)
     device.left_connected.connect(on_left_connected)
     device.right_connected.connect(on_right_connected)
     device.status_changed.connect(window.update_status)
     device.battery_changed.connect(window.update_battery)
+    device.receiver_presence_changed.connect(window.update_receiver_presence)
 
     device.start()
     app.aboutToQuit.connect(device.stop)

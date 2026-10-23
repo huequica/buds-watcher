@@ -18,18 +18,22 @@ class MainWindow(QWidget):
         self._right_ok = True
         self._left_battery: int | None = None
         self._right_battery: int | None = None
+        self._receiver_present = True
 
         layout = QVBoxLayout(self)
 
+        self._receiver_label = QLabel("ドングルが接続されていません")
+        self._receiver_label.setStyleSheet("color: darkgoldenrod;")
         self._left_label = QLabel()
         self._right_label = QLabel()
 
-        for label in (self._left_label, self._right_label):
+        for label in (self._receiver_label, self._left_label, self._right_label):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             font = label.font()
             font.setPointSize(14)
             label.setFont(font)
 
+        layout.addWidget(self._receiver_label)
         layout.addWidget(self._left_label)
         layout.addWidget(self._right_label)
 
@@ -46,7 +50,15 @@ class MainWindow(QWidget):
         self._right_battery = right_battery if right_battery >= 0 else None
         self._render()
 
+    def update_receiver_presence(self, present: bool) -> None:
+        self._receiver_present = present
+        self._render()
+
     def _render(self) -> None:
+        # ドングルが無い間は L/R の状態は当てにならないので、警告だけを表示する
+        self._receiver_label.setVisible(not self._receiver_present)
+        self._left_label.setVisible(self._receiver_present)
+        self._right_label.setVisible(self._receiver_present)
         self._left_label.setText(self._format_line("左", self._left_ok, self._left_battery))
         self._left_label.setStyleSheet("color: %s;" % ("green" if self._left_ok else "red"))
         self._right_label.setText(self._format_line("右", self._right_ok, self._right_battery))

@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # OverlayNotification / LayerShellOverlayNotification のどちらからも参照する共有定数。
 ACCENT_DISCONNECTED = QColor(220, 60, 60)
 ACCENT_CONNECTED = QColor(70, 190, 120)
+ACCENT_WARNING = QColor(230, 190, 40)
 
 
 class OverlayNotification(QWidget):
@@ -30,6 +31,7 @@ class OverlayNotification(QWidget):
 
     ACCENT_DISCONNECTED = ACCENT_DISCONNECTED
     ACCENT_CONNECTED = ACCENT_CONNECTED
+    ACCENT_WARNING = ACCENT_WARNING
 
     def __init__(self) -> None:
         super().__init__(
